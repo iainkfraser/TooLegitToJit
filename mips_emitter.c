@@ -1,0 +1,196 @@
+/*
+* (C) Iain Fraser - GPLv3 
+*
+* MIPS machine code emitter. Uses own encoding code because dynasm for MIPS
+* doesn't currently support register replacement. When time permits Ill
+* update dynasm to do so.
+*
+* 1:1 mapping of LuaVM opcode to function emitter.
+*/
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <stddef.h>
+#include <string.h>
+#include <assert.h>
+#include "mc_emitter.h"
+#include "regdef.h"
+#include "mips_opcodes.h"
+#include "list.h"
+#include "mips_emitter.h"
+#include "mips_mapping.h"
+#include "bit_manip.h"
+
+#define REF	( *( mips_emitter**)mce ) 
+
+void load_bigim( struct mips_emitter* me, int reg, int k ){
+	ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( MOP_LUI, 0, reg, ( k >> 16 ) & 0xffff ) );
+	ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( MOP_ORI, reg, reg, k & 0xffff ) );
+}
+
+static void loadim( struct mips_emitter* me, int reg, int k ){
+	if( k >= -32768 && k <= 65535 ){
+		if( k < 0 )
+			ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( MOP_ORI, _zero, reg, k ) );
+		else
+			ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( MOP_ADDIU, _zero, reg, k ) );
+	} else {
+		load_bigim( me, reg, k );
+	}
+}
+
+// Load to register IF NOT IN REGISTER, different to ASSIGN 
+static void loadreg( struct mips_emitter* me, operand* d, int temp_reg, bool forcereg ){
+	switch( d->tag ){
+		case OT_IMMED:
+			loadim( me, temp_reg, d->k );	// only ADDi special case not worth extra work considering no cost for reg move
+			break;
+		case OT_DIRECTADDR:
+			ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( MOP_LW, d->base, temp_reg, d->offset ) );
+			break;
+		case OT_REG:
+			if( !forcereg )
+				return;
+			ENCODE_OP( me, GEN_MIPS_OPCODE_3REG( MOP_SPECIAL, d->reg, _zero, temp_reg, MOP_SPECIAL_OR ) );
+			break;
+		default:
+			assert( false );
+	}
+
+	// update to reg operand
+	d->tag = OT_REG;
+	d->reg = temp_reg;
+} 
+
+static void do_bop( struct mips_emitter* me, operand d, operand s, operand t, int op ){
+	assert( d.tag == OT_REG || d.tag == OT_DIRECTADDR );
+
+	loadreg( me, &s, TEMP_REG1, false );
+	loadreg( me, &t, TEMP_REG2, false );
+
+	assert( s.tag == OT_REG && t.tag == OT_REG );
+
+	int dreg = d.tag == OT_REG ? d.reg : TEMP_REG0;
+	ENCODE_OP( me, GEN_MIPS_OPCODE_3REG( MOP_SPECIAL, s.reg, t.reg, dreg, op ) );
+
+	if( d.tag == OT_DIRECTADDR )		// | sw reg, d.addr 
+		ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( MOP_SW, d.base, dreg, d.offset ) );
+		 
+}
+
+static void bop( struct mips_emitter* me, loperand d, loperand s, loperand t, int op ){
+	assert( d.islocal );
+	do_bop( me, luaoperand_to_operand( me, d ),  luaoperand_to_operand( me, s ), 
+				luaoperand_to_operand( me, t ), op );
+}
+
+static void do_assign( struct mips_emitter* me, operand d, operand s ){
+	assert( d.tag == OT_REG || d.tag == OT_DIRECTADDR );	
+
+	int reg = d.tag == OT_REG ? d.reg : _t0; 
+	loadreg( me, &s, reg, d.tag == OT_REG );
+
+	if( d.tag == OT_DIRECTADDR )		// | sw reg, d.addr 
+		ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( MOP_SW, d.base, reg, d.offset ) );
+}
+
+
+void emit_ret( void** mce ){
+	int j = ( REF->epi - ( REF->size + 1 ) ) / 4;	// branch is from delay slot
+	ENCODE_OP( REF, GEN_MIPS_OPCODE_2REG( MOP_BEQ, _zero, _zero, (int16_t)j ) );
+	ENCODE_OP( REF, MOP_NOP );
+} 
+
+
+void emit_loadk( void** mce, int l, int k ){
+	do_assign( REF, local_to_operand( REF, l ), const_to_operand( REF, k ) );
+}
+
+void emit_move( void** mce, loperand d, loperand s ){
+	assert( d.islocal );	
+	do_assign( REF, luaoperand_to_operand( REF, d ), luaoperand_to_operand( REF,s ) );
+}
+
+void emit_add( void** mce, loperand d, loperand s, loperand t ){
+	bop( REF, d, s, t, MOP_SPECIAL_ADDU );
+}
+
+void emit_sub( void** mce, loperand d, loperand s, loperand t ){
+	bop( REF, d, s, t, MOP_SPECIAL_SUBU );
+}
+
+
+void emit_forprep( void** mce, loperand init, int pc, int j ){
+	assert( init.islocal );
+	
+	loperand limit = { .islocal = true, .index = init.index + 1 };
+	loperand step = { .islocal = true, .index = init.index + 2 };
+	
+	pc = pc + 1;
+	emit_sub( mce, init, init, step );
+	
+	/* branch loop */
+	push_branch( REF, pc + j );
+	ENCODE_OP( REF,	GEN_MIPS_OPCODE_2REG( MOP_BEQ, _zero, _zero, pc + j ) );
+	ENCODE_OP( REF, MOP_NOP );
+}
+
+void emit_forloop( void** mce, loperand loopvar, int pc, int j ){
+	assert( loopvar.islocal );
+
+	loperand limit = { .islocal = true, .index = loopvar.index + 1 };
+	loperand step = { .islocal = true, .index = loopvar.index + 2 };
+	loperand iloopvar = { .islocal = true, .index = loopvar.index + 3 };	
+
+	pc = pc + 1;
+
+	emit_add( mce, loopvar, loopvar, step );
+	emit_move( mce, iloopvar, loopvar );
+	
+	//| add a, a, a + ( 2 * 4 )
+	//| move a + ( 3 * 4 ), a 
+	//| sub v0, a, a + 4  
+	//| bgtz v0, 1 
+	//| jmp ( pc + j ) 
+	//| nop 
+
+	operand dst = { .tag = OT_REG, { .reg = TEMP_REG1 } };
+	do_bop( REF, dst, luaoperand_to_operand( REF, loopvar ), 
+			luaoperand_to_operand( REF, limit ), MOP_SPECIAL_SUBU );
+
+	
+	ENCODE_OP( REF, GEN_MIPS_OPCODE_2REG( MOP_BGTZ, TEMP_REG1, 0, 3 ) );
+	ENCODE_OP( REF, MOP_NOP );
+	
+	push_branch( REF, pc + j );
+	ENCODE_OP( REF, GEN_MIPS_OPCODE_2REG( MOP_BEQ, _zero, _zero, pc + j ) );
+	ENCODE_OP( REF, MOP_NOP );
+}
+
+static void create_table( int array, int hash ){
+	// todo create the table 
+}
+
+
+static void call_fn( struct mips_emitter* me, uintptr_t fn, size_t argsz ){
+	// create space for args - assume caller has setup a0 and a1
+	argsz = max( argsz, 16 );
+	ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( MOP_ADDIU, _sp, _sp, (int16_t)( -argsz ) ) );
+
+	// can assume loading into _v0 is safe because function may overwrite it 
+	loadim( me, _v0, fn );
+	ENCODE_OP( me, GEN_MIPS_OPCODE_3REG( MOP_SPECIAL, _v0, _zero, _ra, MOP_SPECIAL_JALR ) );
+	ENCODE_OP( me, MOP_NOP );	// TODO: one of the delay slots could be saved reg
+	
+	// restore the stack 	
+	ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( MOP_ADDIU, _sp, _sp, (int16_t)( argsz ) ) );
+}
+
+
+void emit_newtable( void** mce, loperand dst, int array, int hash ){
+	loadim( REF, _a0, array );
+	loadim( REF, _a1, hash );
+	call_fn( REF, (uintptr_t)create_table, 0 );
+}
+
