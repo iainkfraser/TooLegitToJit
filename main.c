@@ -129,6 +129,26 @@ int load_code( FILE* f, struct proto* p ){
 					to_loperand( GETARG_B( ins ) ), 
 					to_loperand( GETARG_C( ins ) ) );
 				break;
+			case OP_SUB:
+				emit_sub( &mce, to_loperand( A ), 
+					to_loperand( GETARG_B( ins ) ), 
+					to_loperand( GETARG_C( ins ) ) );
+				break;
+			case OP_DIV:
+				emit_div( &mce, to_loperand( A ), 
+					to_loperand( GETARG_B( ins ) ), 
+					to_loperand( GETARG_C( ins ) ) );
+				break;
+			case OP_MUL:
+				emit_mul( &mce, to_loperand( A ), 
+					to_loperand( GETARG_B( ins ) ), 
+					to_loperand( GETARG_C( ins ) ) );
+				break;
+			case OP_MOD:
+				emit_mod( &mce, to_loperand( A ), 
+					to_loperand( GETARG_B( ins ) ), 
+					to_loperand( GETARG_C( ins ) ) );
+				break;
 			case OP_RETURN:
 				emit_ret( &mce );
 				break;

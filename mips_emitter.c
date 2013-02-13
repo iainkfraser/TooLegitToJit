@@ -24,6 +24,7 @@
 #include "table.h"
 
 #define REF	( *( mips_emitter**)mce ) 
+#define OP_TARGETREG( r )	{ .tag = OT_REG, { .reg = ( r ) } }
 
 void load_bigim( struct mips_emitter* me, int reg, int k ){
 	ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( MOP_LUI, 0, reg, ( k >> 16 ) & 0xffff ) );
@@ -64,7 +65,7 @@ static void loadreg( struct mips_emitter* me, operand* d, int temp_reg, bool for
 	d->reg = temp_reg;
 } 
 
-static void do_bop( struct mips_emitter* me, operand d, operand s, operand t, int op ){
+static void do_bop( struct mips_emitter* me, operand d, operand s, operand t, int op, int special ){
 	assert( d.tag == OT_REG || d.tag == OT_DIRECTADDR );
 
 	loadreg( me, &s, TEMP_REG1, false );
@@ -73,23 +74,23 @@ static void do_bop( struct mips_emitter* me, operand d, operand s, operand t, in
 	assert( s.tag == OT_REG && t.tag == OT_REG );
 
 	int dreg = d.tag == OT_REG ? d.reg : TEMP_REG0;
-	ENCODE_OP( me, GEN_MIPS_OPCODE_3REG( MOP_SPECIAL, s.reg, t.reg, dreg, op ) );
+	ENCODE_OP( me, GEN_MIPS_OPCODE_3REG( special, s.reg, t.reg, dreg, op ) );
 
 	if( d.tag == OT_DIRECTADDR )		// | sw reg, d.addr 
 		ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( MOP_SW, d.base, dreg, d.offset ) );
 		 
 }
 
-static void bop( struct mips_emitter* me, loperand d, loperand s, loperand t, int op ){
+static void bop( struct mips_emitter* me, loperand d, loperand s, loperand t, int op, int special ){
 	assert( d.islocal );
 	do_bop( me, luaoperand_to_operand( me, d ),  luaoperand_to_operand( me, s ), 
-				luaoperand_to_operand( me, t ), op );
+				luaoperand_to_operand( me, t ), op, special );
 }
 
 static void do_assign( struct mips_emitter* me, operand d, operand s ){
 	assert( d.tag == OT_REG || d.tag == OT_DIRECTADDR );	
 
-	int reg = d.tag == OT_REG ? d.reg : _t0; 
+	int reg = d.tag == OT_REG ? d.reg : TEMP_REG1; 
 	loadreg( me, &s, reg, d.tag == OT_REG );
 
 	if( d.tag == OT_DIRECTADDR )		// | sw reg, d.addr 
@@ -114,13 +115,38 @@ void emit_move( void** mce, loperand d, loperand s ){
 }
 
 void emit_add( void** mce, loperand d, loperand s, loperand t ){
-	bop( REF, d, s, t, MOP_SPECIAL_ADDU );
+	bop( REF, d, s, t, MOP_SPECIAL_ADDU, MOP_SPECIAL );
 }
 
 void emit_sub( void** mce, loperand d, loperand s, loperand t ){
-	bop( REF, d, s, t, MOP_SPECIAL_SUBU );
+	bop( REF, d, s, t, MOP_SPECIAL_SUBU, MOP_SPECIAL );
 }
 
+void emit_mul( void** mce, loperand d, loperand s, loperand t ){
+	bop( REF, d, s, t, MOP_SPECIAL2_MUL, MOP_SPECIAL2 );
+}
+
+static void do_div( void **mce, loperand d, loperand s, loperand t, bool islow  ){
+	operand nil = OP_TARGETREG( _zero );	// dst is in hi and lo see instruction encoding
+	operand dst = luaoperand_to_operand( REF, d );
+	do_bop( REF, nil, luaoperand_to_operand( REF, s ), luaoperand_to_operand( REF, t ),
+			 MOP_SPECIAL_DIV, MOP_SPECIAL );
+
+	// load the quotient into the dest
+	operand src = OP_TARGETREG( dst.tag == OT_REG ? dst.reg : TEMP_REG1 );
+	ENCODE_OP( REF, GEN_MIPS_OPCODE_3REG( MOP_SPECIAL, _zero, _zero, src.reg, islow ? MOP_SPECIAL_MFLO : MOP_SPECIAL_MFHI ) );
+
+	if( dst.tag != OT_REG )
+		do_assign( REF, dst, src );	
+}
+
+void emit_div( void** mce, loperand d, loperand s, loperand t ){
+	do_div( mce, d, s, t, true );
+}
+
+void emit_mod( void** mce, loperand d, loperand s, loperand t ){
+	do_div( mce, d, s, t, false );
+}
 
 void emit_forprep( void** mce, loperand init, int pc, int j ){
 	assert( init.islocal );
@@ -158,7 +184,7 @@ void emit_forloop( void** mce, loperand loopvar, int pc, int j ){
 
 	operand dst = { .tag = OT_REG, { .reg = TEMP_REG1 } };
 	do_bop( REF, dst, luaoperand_to_operand( REF, loopvar ), 
-			luaoperand_to_operand( REF, limit ), MOP_SPECIAL_SUBU );
+			luaoperand_to_operand( REF, limit ), MOP_SPECIAL_SUBU, MOP_SPECIAL );
 
 	
 	ENCODE_OP( REF, GEN_MIPS_OPCODE_2REG( MOP_BGTZ, TEMP_REG1, 0, 3 ) );
@@ -200,8 +226,6 @@ static void call_fn( struct mips_emitter* me, uintptr_t fn, size_t argsz ){
 	}
 }
 
-// get a constant register 
-#define OP_TARGETREG( r )	{ .tag = OT_REG, { .reg = r } }
 
 void emit_newtable( void** mce, loperand dst, int array, int hash ){
 	loadim( REF, _a0, array );
