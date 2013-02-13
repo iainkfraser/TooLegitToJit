@@ -12,8 +12,8 @@ HDRS = $(HEADERS:%.h=$(HDRDIR)/%.h)
 
 FLAGS := -I include -std=gnu99 -g3
 
-eluajit	: main.c mips_emitter.c mips_setup.c $(HDRS)  
-	 $(CC) $(FLAGS) main.c mips_emitter.c mips_setup.c -o eluajit
+eluajit	: main.c mips_emitter.c mips_setup.c table.c $(HDRS)  
+	 $(CC) $(FLAGS) main.c mips_emitter.c mips_setup.c table.c -o eluajit
 
 clean : 
 	rm eluajit

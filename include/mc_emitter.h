@@ -44,5 +44,5 @@ void emit_sub( void** mce, loperand d, loperand s, loperand t );
 void emit_forprep( void** mce, loperand init, int pc, int j );
 void emit_forloop( void** mce, loperand loopvar, int pc, int j );
 void emit_newtable( void** mce, loperand dst, int array, int hash );
-
+void emit_setlist( void** mce, loperand table, int n, int block );
 #endif

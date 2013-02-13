@@ -270,7 +270,7 @@ OP_EXTRAARG/*	Ax	extra (larger) argument for previous opcode	*/
 #define NUM_OPCODES	(cast(int, OP_EXTRAARG) + 1)
 
 /* @ikf not using below code */ 
-#if 0
+#if 1 
 
 /*===========================================================================
   Notes:

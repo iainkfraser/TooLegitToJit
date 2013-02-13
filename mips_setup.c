@@ -105,7 +105,7 @@ static void epilogue( mips_emitter* me, int savedreg, int stack_spill ){
 	load_sreg( me, savedreg, stack_spill );
 
 	printf("EPI\n");
-	// remove frame
+		// remove frame
 	// |move fp, sp
 	// |lw fp,(0)sp
 	ENCODE_OP( me, GEN_MIPS_OPCODE_3REG( MOP_SPECIAL, _fp, _zero, _sp, MOP_SPECIAL_OR ) );
@@ -275,3 +275,10 @@ operand local_to_operand( struct mips_emitter* me, int l ){
 operand luaoperand_to_operand( struct mips_emitter* me, loperand op ){
 	return op.islocal ? local_to_operand( me, op.index )  : const_to_operand( me, op.index );
 }
+
+
+int nr_slots( struct mips_emitter* me ){
+	const int locals = me->tregs - me->cregs;	// locals need tag
+	return local_vreg_count( locals ) + me->cregs;	
+}
+

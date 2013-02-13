@@ -94,6 +94,7 @@ void push_branch( mips_emitter* me, int line );
 operand const_to_operand( struct mips_emitter* me, int k );
 operand local_to_operand( struct mips_emitter* me, int l );
 operand luaoperand_to_operand( struct mips_emitter* me, loperand op );
-
+int nr_slots( struct mips_emitter* me );
 void load_bigim( struct mips_emitter* me, int reg, int k );
+void emit_gettable( void** mce, loperand dst, loperand table, loperand idx );
 #endif

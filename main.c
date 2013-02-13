@@ -151,7 +151,14 @@ int load_code( FILE* f, struct proto* p ){
 						GETARG_C( ins ) );
 				break; 
 			case OP_SETLIST:
-				printf("SETLIST\n");
+				emit_setlist( &mce, to_loperand( A ),
+						GETARG_B( ins ),
+						GETARG_C( ins ) );
+				break;
+			case OP_GETTABLE:
+				emit_gettable( &mce, to_loperand( A ),
+					to_loperand( GETARG_B( ins ) ), 
+					to_loperand( GETARG_C( ins ) ) );
 				break;
 			default:
 				printf("%d\n", GET_OPCODE( ins ) );
@@ -184,7 +191,7 @@ int load_code( FILE* f, struct proto* p ){
 	uint32_t start = tv.tv_sec * 1000 + tv.tv_usec / 1000;
 	int x = chunk();
 //	asm("movl %%ecx, %0" : "=r" ( x ) ); 
-	asm("move %0, $t1" : "=r" ( x ) );
+	asm("move %0, $t2" : "=r" ( x ) );
 	gettimeofday( &tv, NULL );
 	uint32_t end = tv.tv_sec * 1000 + tv.tv_usec / 1000;
 	printf("JIT %d took %u ms\n", x, end - start );

@@ -21,6 +21,7 @@
 #include "mips_emitter.h"
 #include "mips_mapping.h"
 #include "bit_manip.h"
+#include "table.h"
 
 #define REF	( *( mips_emitter**)mce ) 
 
@@ -168,15 +169,21 @@ void emit_forloop( void** mce, loperand loopvar, int pc, int j ){
 	ENCODE_OP( REF, MOP_NOP );
 }
 
-static void create_table( int array, int hash ){
-	// todo create the table 
-}
 
 
 static void call_fn( struct mips_emitter* me, uintptr_t fn, size_t argsz ){
+	// first 10 virtual regs mapped to temps so save them 
+	int temps = min( 10, nr_slots( me ) );
+	for( int i=0; i < temps; i++ ){
+		int treg = vreg_to_reg( i );
+		ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( MOP_SW, _sp, treg, (int16_t)-( (i+1) * 4 ) ) );
+	}
+		
+	// need space for temps and function arguments	
+	int stackspace = 4 * ( max( argsz, 4 ) + temps );
+	
 	// create space for args - assume caller has setup a0 and a1
-	argsz = max( argsz, 16 );
-	ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( MOP_ADDIU, _sp, _sp, (int16_t)( -argsz ) ) );
+	ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( MOP_ADDIU, _sp, _sp, (int16_t)( -stackspace ) ) );
 
 	// can assume loading into _v0 is safe because function may overwrite it 
 	loadim( me, _v0, fn );
@@ -184,13 +191,64 @@ static void call_fn( struct mips_emitter* me, uintptr_t fn, size_t argsz ){
 	ENCODE_OP( me, MOP_NOP );	// TODO: one of the delay slots could be saved reg
 	
 	// restore the stack 	
-	ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( MOP_ADDIU, _sp, _sp, (int16_t)( argsz ) ) );
+	ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( MOP_ADDIU, _sp, _sp, (int16_t)( stackspace ) ) );
+	
+	// reload temps
+	for( int i=0; i < temps; i++ ){
+		int treg = vreg_to_reg( i );
+		ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( MOP_LW, _sp, treg, (int16_t)-( (i+1) * 4 ) ) );
+	}
 }
 
+// get a constant register 
+#define OP_TARGETREG( r )	{ .tag = OT_REG, { .reg = r } }
 
 void emit_newtable( void** mce, loperand dst, int array, int hash ){
 	loadim( REF, _a0, array );
 	loadim( REF, _a1, hash );
-	call_fn( REF, (uintptr_t)create_table, 0 );
+	call_fn( REF, (uintptr_t)&table_create, 0 );
+
+	operand src = OP_TARGETREG( _v0 ); 
+	do_assign( REF, luaoperand_to_operand( REF, dst ),  src );
+}
+
+void emit_setlist( void** mce, loperand table, int n, int block ){
+	assert( table.islocal );
+
+	operand dst = OP_TARGETREG( _a0 );
+	operand val = OP_TARGETREG( _a3 );
+
+	const int offset = ( block - 1 ) * LFIELDS_PER_FLUSH; 
+	
+	for( int i=1; i <= n; i++ ){
+
+		loperand lval = { .islocal = true, .index = table.index + i };	
+
+		do_assign( REF, dst, luaoperand_to_operand( REF, table ) );
+		loadim( REF, _a1, offset + i );
+		loadim( REF, _a2, 0 );	// TODO: type
+		do_assign( REF, val, luaoperand_to_operand( REF, lval ) );
+	
+		call_fn( REF, (uintptr_t)&table_set, 0 );	
+
+	}
+
+
+
+}
+
+void emit_gettable( void** mce, loperand dst, loperand table, loperand idx ){
+	operand t = OP_TARGETREG( _a0 );
+	operand i = OP_TARGETREG( _a1 );
+	operand src = OP_TARGETREG( _v0 ); 
+
+	do_assign( REF, t, luaoperand_to_operand( REF, table ) );
+	do_assign( REF, i, luaoperand_to_operand( REF, idx ) );
+	// TODO: type
+
+	call_fn( REF, (uintptr_t)&table_get, 0 );
+
+	do_assign( REF, luaoperand_to_operand( REF, dst ),  src );
+
 }
 
