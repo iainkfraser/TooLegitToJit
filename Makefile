@@ -1,19 +1,23 @@
 #CC := mipsel-openwrt-linux-gcc
+CFLAGS := -I include -std=gnu99 -g3 -MD -MP
+OBJECTS := main.o mips_emitter.o mips_setup.o table.o 
 
-# TODO: use gcc dependecy feature 
-HEADERS := mc_emitter.h mips_mapping.h mips_emitter.h user_memory.h mips_opcodes.h bit_manip.h 
-HEADERS += lua.h luaconf.h lopcodes.h llimits.h 
-HEADERS += list.h  
+OBJDIR := bin
+OBJS := $(patsubst %,$(OBJDIR)/%,$(OBJECTS))
 
-# TODO use objs to speed up compilation on qemu 
 
-HDRDIR := include
-HDRS = $(HEADERS:%.h=$(HDRDIR)/%.h)
 
-FLAGS := -I include -std=gnu99 -g3
+$(OBJDIR)/eluajit : $(OBJS) 
+	 $(CC) $(CFLAGS) $(OBJS) -o $(OBJDIR)/eluajit
 
-eluajit	: main.c mips_emitter.c mips_setup.c table.c $(HDRS)  
-	 $(CC) $(FLAGS) main.c mips_emitter.c mips_setup.c table.c -o eluajit
+$(OBJDIR)/%.o : %.c
+	$(CC) -c $(CFLAGS) $*.c -o $(OBJDIR)/$*.o
 
 clean : 
-	rm eluajit
+	rm bin/*
+
+# include the depedency file. Note the "-" that means ignore it if file doesn't exist
+# because if .d doesn't exist then .o doesn't exist so its gonna get rebuilt anyway.
+# Remember the whole point of .d is to command make to rebuild obj file because
+# header changed
+-include $(OBJS:%.o=%.d)
