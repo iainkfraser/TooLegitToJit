@@ -8,6 +8,7 @@
 #include <string.h>
 #include <limits.h>
 #include <sys/time.h>
+#include <unistd.h>
 #include "lopcodes.h"
 #include "mc_emitter.h"
 #include "user_memory.h"
@@ -210,8 +211,11 @@ int load_code( FILE* f, struct proto* p ){
 	gettimeofday( &tv, NULL );
 	uint32_t start = tv.tv_sec * 1000 + tv.tv_usec / 1000;
 	int x = chunk();
+
+	// be careful about the machine its running on
 //	asm("movl %%ecx, %0" : "=r" ( x ) ); 
-	asm("move %0, $t2" : "=r" ( x ) );
+//	asm("move %0, $t2" : "=r" ( x ) );
+
 	gettimeofday( &tv, NULL );
 	uint32_t end = tv.tv_sec * 1000 + tv.tv_usec / 1000;
 	printf("JIT %d took %u ms\n", x, end - start );
@@ -226,22 +230,13 @@ int load_code( FILE* f, struct proto* p ){
 int load_constants( FILE* f, struct proto* p, void** mce ){
 	char t;
 	int k; 
-//	load_member( p, nrconstants, f );
 
 	for( int i = 0; i < p->nrconstants; i++ ){
 		fread( &t, sizeof(char), 1, f );	
 		switch( t ){
 			case LUA_TNUMBER:
 				fread( &k, sizeof( int ), 1, f );	
-		//		emit_setk( 4 * ( p->maxstacksize + i ), k );
-				// TODO: use stack macro 
-			//setk( 4 * ( p->maxstacksize + i ) , k, mce );
-			
-#if 1
 				mce_const_int( mce, i, k );
-#else
-				loadim( 4 * ( p->maxstacksize + i ) , k, mce );
-#endif
 				break;	
 			default:
 				assert( 0 );
@@ -274,39 +269,32 @@ int load_function( FILE* f, struct proto* p ){
 int main( int argc, char* argv[] ){
 	FILE* f = NULL;
 	struct proto main;
-
-	if( argc != 2 ) 
+	bool disassem = false;
+	char* out;
+	int c;
+	
+	while( ( c = getopt( argc, argv, "d:" ) ) != -1 ){
+		switch( c ){
+			case 'd':
+				disassem = true;
+				out = optarg;
+				break;
+			case '?':
+			default:
+				do_fail("unknown option");
+		}
+	}
+	
+	if( optind >= argc )
 		do_fail("expected input filename");
 	
-	f = fopen( argv[1], "r" );
+	f = fopen( argv[optind], "r" );
 	if( !f )
 		do_fail("unable to open file");
 
 	// init jit
-//	jit_init();
-
 	do_cfail( validate_header( f ), "unacceptable header" );
-	do_cfail( load_function( f, &main), "unable to load func" );
-
-#if 0
-	int (*chunk)() = jit_code();
-
-	struct timeval tv;
-
-	gettimeofday( &tv, NULL );
-	uint32_t start = tv.tv_sec * 1000 + tv.tv_usec / 1000;
-
-	int x = chunk();
-
-	asm("movl %%ecx, %0" : "=r" ( x ) ); 
-
-	gettimeofday( &tv, NULL );
-	uint32_t end = tv.tv_sec * 1000 + tv.tv_usec / 1000;
-	
-	printf("JIT %d took %u ms\n", x, end - start );
-	jit_freecode( chunk );
-#endif
-
+	do_cfail( load_function( f, &main ), "unable to load func" );
 exit:
 	if( f )	fclose( f );
 	return 0;
