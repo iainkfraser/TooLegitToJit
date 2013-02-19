@@ -28,12 +28,14 @@ struct proto {
 	int linedefined;
 	int lastlinedefined;
 	int sizecode;
+	int sizemcode;
 	int nrconstants;	
 	int nrprotos;
 	uint8_t numparams;
 	uint8_t is_vararg;
 	uint8_t maxstacksize;	
 	void*	code;
+	void*	code_start;
 
 	struct proto* subp;	// child prototypes 
 

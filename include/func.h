@@ -12,7 +12,7 @@ struct closure {
 	uint32_t upval[];	
 };
 
-void create_closure( struct proto* addr, struct closure* c );
+void closure_create( struct proto* addr, struct closure* c );
 
 #endif
 

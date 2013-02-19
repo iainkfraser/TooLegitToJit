@@ -298,14 +298,14 @@ int load_code( FILE* f, struct proto* p, struct code_alloc* ca ){
 
 	}
 
-	size_t size = mce_link( &mce );
-	p->code = ca->alloc( size );
+	p->sizemcode = mce_link( &mce );
+	p->code = ca->alloc( p->sizemcode );
 	if( !p->code )
 		assert( 0 );	
 
-	mce_stop( &mce, p->code );
+	p->code_start = mce_stop( &mce, p->code );
 	if( ca->execperm )
-		ca->execperm( p->code, size );
+		ca->execperm( p->code, p->sizemcode );
 	
 
 	fseek( f, end, SEEK_SET );
@@ -336,43 +336,46 @@ int load_function( FILE* f, struct proto* p, struct code_alloc* ca ){
 
 }
 
-#if 0
-void run( ){
-#if 0 
-	size_t size = mce_link( &mce );
-	char* mem = malloc( size );
-	char* start = mce_stop( &mce, mem );
-	printf("%x %x\n", mem, start );
-
-	FILE* o = fopen("dsa","w");
-	fwrite( mem, size, 1, o );
-	fclose( o );
-	free( mem );
-#else
-	size_t size = mce_link( &mce );
-  	char *mem = em_alloc( size );
-	
-	int (*chunk)() = mce_stop( &mce, mem );
-	em_execperm( mem, size );
-
-
+static void execute( struct proto* main ){
 	struct timeval tv;
-	gettimeofday( &tv, NULL );
-	uint32_t start = tv.tv_sec * 1000 + tv.tv_usec / 1000;
-	int x = chunk();
-
-	// be careful about the machine its running on
-//	asm("movl %%ecx, %0" : "=r" ( x ) ); 
-//	asm("move %0, $t2" : "=r" ( x ) );
+	int x;
+	uint32_t start,end;
+	int (*chunk)() = main->code_start;
 
 	gettimeofday( &tv, NULL );
-	uint32_t end = tv.tv_sec * 1000 + tv.tv_usec / 1000;
-	printf("JIT %d took %u ms\n", x, end - start );
+	start = tv.tv_sec * 1000 + tv.tv_usec / 1000;
+	chunk();
 
-	em_free( mem, size );
+	// temp method for getting result
+#if defined(__mips__)
+	asm("move %0, $t2" : "=r" ( x ) );
+#elif defined( __i386__ )
+	asm("movl %%ecx, %0" : "=r" ( x ) ); 
 #endif
+
+	gettimeofday( &tv, NULL );
+	end = tv.tv_sec * 1000 + tv.tv_usec / 1000;
+
+
+	printf("2 Legit 2 JIT %d took %u ms\n", x, end - start );
 }
-#endif
+
+static void serialise( struct proto* main, char* filepath ){
+	// TODO: recursively write instructions to file
+	FILE* o = fopen( filepath, "w" );
+	fwrite( main->code, main->sizemcode, 1, o );
+	fclose( o );
+}
+
+static void cleanup( struct proto* p, struct code_alloc* ca ){
+	for( int i = 0; i < p->nrprotos; i++ ){
+		cleanup( &p->subp[i], ca );
+	}
+
+	// even safe for 0 child because subp is always malloc. If confused see man.
+	ca->free( p->code, p->sizemcode );
+	free( p->subp );
+}
 
 int main( int argc, char* argv[] ){
 	FILE* f = NULL;
@@ -409,6 +412,13 @@ int main( int argc, char* argv[] ){
 	// init jit
 	do_cfail( validate_header( f ), "unacceptable header" );
 	do_cfail( load_function( f, &main, &ca ), "unable to load func" );
+
+	if( !disassem )
+		execute( &main );
+	else
+		serialise( &main, out );	
+
+	cleanup( &main, &ca );
 exit:
 	if( f )	fclose( f );
 	return 0;

@@ -280,6 +280,6 @@ void emit_gettable( void** mce, loperand dst, loperand table, loperand idx ){
 void emit_closure( void** mce, loperand dst, struct proto* p ){
 	loadim( REF, _a0, (uintptr_t)p );
 	// TODO: load the current closure into the _a1
-	call_fn( REF, (uintptr_t)&table_create, 0 );
+	call_fn( REF, (uintptr_t)&closure_create, 0 );
 }
 
