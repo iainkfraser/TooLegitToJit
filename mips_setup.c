@@ -14,7 +14,7 @@
 
 
 
-void mce_init( void** mce, size_t vmlines, size_t nr_constants ){
+void mce_init( void** mce, size_t vmlines ){
 	const int jtsz = vmlines * 4;
 
 	mips_emitter** me = ( mips_emitter**)mce;
@@ -23,14 +23,25 @@ void mce_init( void** mce, size_t vmlines, size_t nr_constants ){
 	(*me)->size = 0;
 	(*me)->bufsize = 0;
 	(*me)->jt = malloc( jtsz );
-	(*me)->consts = malloc( sizeof( struct constant ) * nr_constants );
 	(*me)->cregs = 0;
-	(*me)->constsize = nr_constants;
 	
 	memset( (*me)->jt, 0, jtsz );
 	INIT_LIST_HEAD( &(*me)->head );
 }
 
+void mce_const_init( void** mce, size_t nr_constants ){
+	mips_emitter** me = ( mips_emitter**)mce;
+	(*me)->consts = malloc( sizeof( struct constant ) * nr_constants );
+	(*me)->constsize = nr_constants;
+}
+
+void mce_proto_init( void** mce, size_t nr_protos ){
+	mips_emitter** me = ( mips_emitter**)mce;
+}
+
+void mce_proto_set( void** mce, int pindex, void* addr ){
+	
+}
 
 void mce_const_int( void** mce, int kindex, int value ){
 	mips_emitter* me = *( mips_emitter**)mce;

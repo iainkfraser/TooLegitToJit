@@ -22,6 +22,7 @@
 #include "mips_mapping.h"
 #include "bit_manip.h"
 #include "table.h"
+#include "func.h"
 
 #define REF	( *( mips_emitter**)mce ) 
 #define OP_TARGETREG( r )	{ .tag = OT_REG, { .reg = ( r ) } }
@@ -274,5 +275,11 @@ void emit_gettable( void** mce, loperand dst, loperand table, loperand idx ){
 
 	do_assign( REF, luaoperand_to_operand( REF, dst ),  src );
 
+}
+
+void emit_closure( void** mce, loperand dst, struct proto* p ){
+	loadim( REF, _a0, (uintptr_t)p );
+	// TODO: load the current closure into the _a1
+	call_fn( REF, (uintptr_t)&table_create, 0 );
 }
 

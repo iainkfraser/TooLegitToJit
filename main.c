@@ -1,5 +1,9 @@
 /*
 * (C) Iain Fraser - GPLv3 
+*
+* TODO: This code is pretty much like a prototype so there are some serious problems:
+*	1) Doesn't do any error checking on file read
+*	2) File access interface should be decoupled from libc 
 */
 
 #include <stdio.h>
@@ -9,12 +13,30 @@
 #include <limits.h>
 #include <sys/time.h>
 #include <unistd.h>
+#include <errno.h>
+#include <stdlib.h>
 #include "lopcodes.h"
 #include "mc_emitter.h"
 #include "user_memory.h"
+#include "list.h"
+#include "math_util.h"
+
+
+
+struct code_alloc {
+	void* ( *alloc )( size_t );
+	void  ( *free )( void*, size_t );
+	void  ( *execperm )( void*, size_t ); 
+};;
+
+#define member_size(type, member) sizeof(((type *)0)->member)
+#define do_load_member( type, member, ptr, f )	fread( &ptr -> member, member_size( type, member ), 1, f )
+#define load_member( ptr, member, f )	do_load_member( typeof( *ptr ), member, ptr, f )
 
 #define do_fail( msg, ... ) 	do{ fprintf( stderr, "error: " msg "\n", ##  __VA_ARGS__ ); goto exit; }while(0)
 #define do_cfail( c, msg, ... )	do{ if( ( c ) ) do_fail( msg, ##  __VA_ARGS__ ); }while(0)
+
+int load_function( FILE* f, struct proto* p, struct code_alloc* ca );
 
 
 /* mark for precompiled code ('<esc>Lua') */
@@ -54,56 +76,131 @@ int validate_header( FILE* f ){
 	return 1;	// failed 	
 }
 
-struct proto {
-	int linedefined;
-	int lastlinedefined;
-	int sizecode;
-	int nrconstants;	
-	uint8_t numparams;
-	uint8_t is_vararg;
-	uint8_t maxstacksize;	
-};
+;
 
-#define member_size(type, member) sizeof(((type *)0)->member)
-#define do_load_member( type, member, ptr, f )	fread( &ptr -> member, member_size( type, member ), 1, f )
-#define load_member( ptr, member, f )	do_load_member( typeof( *ptr ), member, ptr, f )
+/* load prototypes */
+int load_prototypes( FILE* f, struct proto* p, void** mce, struct code_alloc* ca ){
+	int ret;
+	load_member( p, nrprotos, f );
+	mce_proto_init( mce, p->nrprotos );	
 
 
-/*
-* Function execution consists of:
-* 	Function Prologue - load arguments and constants onto the stack
-* 	Code - code loaded here  
-* 	Function Epilogue - do return procedure
-*	For now string them together using JMPs, in final version should just be one large allocation.
-*
-*	TODO:
-*		+ determine where prologue will put args, locals and constants on the stack
-*		+ what does dynasm return?
-*
-*	constants
-*	--------
-*	locals
-*
-*/
-int load_code( FILE* f, struct proto* p ){
+	p->subp = malloc( sizeof( struct proto ) * p->nrprotos );
+	if( !p->subp )
+		return -ENOMEM;		// TODO: free memory for other children 
+
+	for( int i = 0; i < p->nrprotos; i++ ){
+		printf("loading prototype %d\n", i );
+
+		struct proto* child = &p->subp[i];
+
+		if( ret = load_function( f, child, ca ) )
+			return ret;		// TODO: free memory 
+
+		printf("loaded sub prototype %d\n", i );
+		mce_proto_set( mce, i, child->code );
+	}
+
+	return 0;
+}
+
+/* load constants and generate function prologue */
+int load_constants( FILE* f, struct proto* p, void** mce ){
+	char t;
+	int k; 
+
+	load_member( p, nrconstants, f );
+	mce_const_init( mce, p->nrconstants );	
+
+	for( int i = 0; i < p->nrconstants; i++ ){
+		fread( &t, sizeof(char), 1, f );	
+		switch( t ){
+			case LUA_TNUMBER:
+				fread( &k, sizeof( int ), 1, f );	
+				mce_const_int( mce, i, k );
+				break;	
+			default:
+				assert( 0 );
+		}
+	}	
+	return 0;
+}
+
+void load_static_string( FILE* f, char* buffer, int len ){
+	size_t size;
+	fread( &size, sizeof( size_t ), 1, f );
+
+	size_t read = min( len, size );
+	size_t skip = max( (int)(size - len), 0 );
+
+	fread( buffer, 1, read, f );
+	fseek( f, skip, SEEK_CUR );
+
+}
+
+int ignore_debug( FILE* f, struct proto* p ){
+	int nr_lineinfo, nr_localvars, nr_upvalues, i;
+	char buffer[32];	// use to verify that loader is working
+
+	// load source file
+	load_static_string( f, buffer, sizeof( buffer ) );
+
+	// load line info 
+	fread( &nr_lineinfo, sizeof( int ), 1, f );
+	fseek( f, nr_lineinfo * sizeof( int ), SEEK_CUR );
+
+	// load local variable info
+	fread( &nr_localvars, sizeof( int ), 1, f );
+	for( i = 0; i < nr_localvars; i++ ){
+		load_static_string( f, buffer, sizeof(buffer) );	// variable name
+		fseek( f, 2 * sizeof( int ), SEEK_CUR );	// start and end pc 
+	}
+
+	// load upvalues names
+	fread( &nr_upvalues, sizeof( int ), 1, f );
+	for( i = 0; i < nr_upvalues; i++ )
+		load_static_string( f, buffer, sizeof( buffer ) );
+
+	return 0;
+}
+
+int ignore_upvalues( FILE* f, struct proto* p ){
+	int n; char up[2];
+	fread( &n, sizeof( int ), 1, f );
+	for( int i = 0; i < n; i++ ){
+		fread( up, 1, 2, f );
+	}
+
+	return 0; 
+}
+
+
+int load_code( FILE* f, struct proto* p, struct code_alloc* ca ){
 	uint32_t ins;
-	int ret, seek;
+	int ret, seek, end;
 	void* mce;
 
+	// prepare function machine code emitter
 	load_member( p, sizecode, f );
-	
-	// skip over code to load constants
+	mce_init( &mce, p->sizecode );
+
+	// Skip over code. Rewind after constants loaded 
 	seek = ftell( f );
 	fseek( f, p->sizecode * 4, SEEK_CUR );
-	load_member( p, nrconstants, f );
-	
-	mce_init( &mce, p->sizecode, p->nrconstants );
-	
+
 	// load constants and come back to code
 	if( ret = load_constants( f, p, &mce ) )
 		return ret;	
+	
+	// load prototypes
+	if( ret = load_prototypes( f, p, &mce, ca ) )
+		return ret;
+	
+	// rewind
+	end = ftell( f );
 	fseek( f, seek, SEEK_SET );
 
+	// start machine code generation
 	mce_start( &mce, p->maxstacksize );
 	
 	// jit the code
@@ -181,6 +278,19 @@ int load_code( FILE* f, struct proto* p ){
 					to_loperand( GETARG_B( ins ) ), 
 					to_loperand( GETARG_C( ins ) ) );
 				break;
+			case OP_LOADNIL:
+				// TODO: pretty simple	
+				break;
+			case OP_CLOSURE:{
+				int idx = GETARG_Bx( ins );
+				assert( idx < p->nrprotos );	// TODO: integrate into error code
+ 			
+				// TODO: deal with reference counting of subprototype 	
+				emit_closure( &mce, to_loperand( A ), &p->subp[ idx ] );
+			
+				}break;
+			case OP_CALL:
+				break;
 			default:
 				printf("%d\n", GET_OPCODE( ins ) );
 				assert( 0 );
@@ -188,7 +298,46 @@ int load_code( FILE* f, struct proto* p ){
 
 	}
 
-	// link and copy the machine code
+	size_t size = mce_link( &mce );
+	p->code = ca->alloc( size );
+	if( !p->code )
+		assert( 0 );	
+
+	mce_stop( &mce, p->code );
+	if( ca->execperm )
+		ca->execperm( p->code, size );
+	
+
+	fseek( f, end, SEEK_SET );
+	return 0;
+}
+
+/* load function prototype */ 
+int load_function( FILE* f, struct proto* p, struct code_alloc* ca ){
+	int ret;
+
+	assert( p );
+	assert( f ) ;
+
+	load_member( p, linedefined, f );
+	load_member( p, lastlinedefined, f );
+	load_member( p, numparams, f );
+	load_member( p, is_vararg, f );
+	load_member( p, maxstacksize, f );
+
+	if( ret = load_code( f, p, ca ) )
+		return ret;
+
+	ignore_upvalues( f, p );
+	ignore_debug( f, p );
+	
+
+	return 0;
+
+}
+
+#if 0
+void run( ){
 #if 0 
 	size_t size = mce_link( &mce );
 	char* mem = malloc( size );
@@ -222,49 +371,8 @@ int load_code( FILE* f, struct proto* p ){
 
 	em_free( mem, size );
 #endif
-
-	return 0;
 }
-
-/* load constants and generate function prologue */
-int load_constants( FILE* f, struct proto* p, void** mce ){
-	char t;
-	int k; 
-
-	for( int i = 0; i < p->nrconstants; i++ ){
-		fread( &t, sizeof(char), 1, f );	
-		switch( t ){
-			case LUA_TNUMBER:
-				fread( &k, sizeof( int ), 1, f );	
-				mce_const_int( mce, i, k );
-				break;	
-			default:
-				assert( 0 );
-		}
-	}	
-	return 0;
-}
-
-/* load function prototype */ 
-int load_function( FILE* f, struct proto* p ){
-	int ret;
-
-	assert( p );
-	assert( f ) ;
-
-	load_member( p, linedefined, f );
-	load_member( p, lastlinedefined, f );
-	load_member( p, numparams, f );
-	load_member( p, is_vararg, f );
-	load_member( p, maxstacksize, f );
-
-	if( ret = load_code( f, p ) )
-		return ret;
-
-//	if( ret = load_constants( f, p ) )
-//		return ret;	
-}
-
+#endif
 
 int main( int argc, char* argv[] ){
 	FILE* f = NULL;
@@ -292,9 +400,15 @@ int main( int argc, char* argv[] ){
 	if( !f )
 		do_fail("unable to open file");
 
+	struct code_alloc ca = {
+		.alloc = &em_alloc,
+		.free = &em_free,
+		.execperm = &em_execperm
+	};
+
 	// init jit
 	do_cfail( validate_header( f ), "unacceptable header" );
-	do_cfail( load_function( f, &main ), "unable to load func" );
+	do_cfail( load_function( f, &main, &ca ), "unable to load func" );
 exit:
 	if( f )	fclose( f );
 	return 0;

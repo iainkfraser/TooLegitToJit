@@ -1,6 +1,7 @@
 /*
 * (C) Iain Fraser - GPLv3  
-* Generic machine code emitter interface.
+* Generic machine code emitter interface. One is used per
+* function.
 */
 
 #ifndef _MC_EMITTER_H_
@@ -8,6 +9,7 @@
 
 #include <stddef.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include "lopcodes.h"
 
 typedef struct lvm_operand{	// lua VM operand
@@ -22,8 +24,27 @@ static inline loperand to_loperand( int rk ){
 	return r;
 } 
 
+struct proto {
+	int linedefined;
+	int lastlinedefined;
+	int sizecode;
+	int nrconstants;	
+	int nrprotos;
+	uint8_t numparams;
+	uint8_t is_vararg;
+	uint8_t maxstacksize;	
+	void*	code;
+
+	struct proto* subp;	// child prototypes 
+
+};
+
 /* machine code emitter control interface */
-void mce_init( void** mce, size_t vmlines, size_t nr_constants );
+void mce_init( void** mce, size_t vmlines );
+void mce_const_init( void** mce, size_t nr_constants );
+void mce_proto_init( void** mce, size_t nr_protos );
+void mce_proto_set( void** mce, int pindex, void* addr );
+
 
 #if 0
 void mce_start( void** mce, size_t vmlines );
@@ -49,6 +70,13 @@ void emit_mod( void** mce, loperand d, loperand s, loperand t );
 void emit_forprep( void** mce, loperand init, int pc, int j );
 void emit_forloop( void** mce, loperand loopvar, int pc, int j );
 
+void emit_gettable( void** mce, loperand dst, loperand table, loperand idx );
 void emit_newtable( void** mce, loperand dst, int array, int hash );
 void emit_setlist( void** mce, loperand table, int n, int block );
+
+void emit_closure( void** mce, loperand dst, struct proto* p );
+
+/* constant loading */
+void mce_const_int( void** mce, int kindex, int value );
+
 #endif

@@ -1,6 +1,6 @@
 #CC := mipsel-openwrt-linux-gcc
-CFLAGS := -I include -std=gnu99 -g3 -MD -MP
-OBJECTS := main.o mips_emitter.o mips_setup.o table.o 
+CFLAGS := -I include -std=gnu99 -g3 -MD -MP -Werror 
+OBJECTS := main.o mips_emitter.o mips_setup.o table.o func.o 
 
 OBJDIR := bin
 OBJS := $(patsubst %,$(OBJDIR)/%,$(OBJECTS))
