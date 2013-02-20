@@ -290,6 +290,8 @@ int load_code( FILE* f, struct proto* p, struct code_alloc* ca ){
 			
 				}break;
 			case OP_CALL:
+				emit_call( &mce, to_loperand( A ), GETARG_B( ins ), 
+						GETARG_C( ins )	);
 				break;
 			default:
 				printf("%d\n", GET_OPCODE( ins ) );

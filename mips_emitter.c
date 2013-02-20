@@ -283,3 +283,20 @@ void emit_closure( void** mce, loperand dst, struct proto* p ){
 	call_fn( REF, (uintptr_t)&closure_create, 0 );
 }
 
+
+void emit_call( void** mce, loperand closure, int nr_params, int nr_results ){
+	// TODO: save temporaries
+
+	// TODO: verify its a closure 
+	operand argc = OP_TARGETREG( _a0 ); 
+	do_assign( REF, argc, luaoperand_to_operand( REF, closure ) );	
+
+	// push arguments onto the stack. Cannot use register move cause can't use dynamic instructions.
+
+	// copy dst reg to a1
+	// copy arg len to a2
+	// copy res len to a3
+
+	printf("call %d %d\n", nr_params, nr_results );
+}
+

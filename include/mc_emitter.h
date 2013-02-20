@@ -59,7 +59,6 @@ void* mce_stop( void** mce, void* buf );
 void label( unsigned int pc , void** Dst );
 
 /* 1:1 mapping to LuaVM instructions */
-void emit_ret( void** mce );
 void emit_loadk( void** mce, int l, int k );
 void emit_move( void** mce, loperand d, loperand s );
 
@@ -77,6 +76,8 @@ void emit_newtable( void** mce, loperand dst, int array, int hash );
 void emit_setlist( void** mce, loperand table, int n, int block );
 
 void emit_closure( void** mce, loperand dst, struct proto* p );
+void emit_call( void** mce, loperand closure, int nr_params, int nr_results );
+void emit_ret( void** mce );
 
 /* constant loading */
 void mce_const_int( void** mce, int kindex, int value );
