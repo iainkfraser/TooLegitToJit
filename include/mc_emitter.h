@@ -51,7 +51,7 @@ void mce_proto_set( void** mce, int pindex, void* addr );
 #if 0
 void mce_start( void** mce, size_t vmlines );
 #else
-void mce_start( void** mce, int nr_locals );
+void mce_start( void** mce, int nr_locals, int nr_params );
 #endif
 
 size_t mce_link( void** mce );

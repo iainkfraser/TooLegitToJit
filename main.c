@@ -201,7 +201,7 @@ int load_code( FILE* f, struct proto* p, struct code_alloc* ca ){
 	fseek( f, seek, SEEK_SET );
 
 	// start machine code generation
-	mce_start( &mce, p->maxstacksize );
+	mce_start( &mce, p->maxstacksize, p->numparams  );
 	
 	// jit the code
 	for( unsigned int i = 0; i < p->sizecode; i++){

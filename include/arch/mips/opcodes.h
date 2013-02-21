@@ -51,6 +51,7 @@
 	( GEN_MIPS_OPCODE_3REG( primaryop, rs, rt, rd, secondaryop ) | ( ( tertop & 0x3f ) << 6 ) )
 
 #define MOP_SPECIAL		0
+#define		MOP_SPEICAL_SLL		0
 #define		MOP_SPECIAL_ROTR	2
 #define		MOP_SPECIAL_SLLV	4
 #define 	MOP_SPECIAL_SRLV	6
@@ -67,6 +68,7 @@
 #define		MOP_SPECIAL_SUBU	35
 #define		MOP_SPECIAL_AND		36
 #define		MOP_SPECIAL_OR		37
+#define		MOP_SPECIAL_NOR		39
 
 #define MOP_COND_BRANCH_OP1	1
 #define MOP_BLTZ		1
@@ -106,4 +108,23 @@
 #define MOP_SW			43
 
 #define MOP_NOP			0
+
+
+/*
+* 1:1 macro to mips instruction  
+*/
+
+#define MI_ADDIU( rt, rs, i )	GEN_MIPS_OPCODE_2REG( MOP_ADDIU, rs, rt, (int16_t)(i) ) 
+#define MI_ADDU( rd, rs, rt )	GEN_MIPS_OPCODE_3REG( MOP_SPECIAL, rs, rt, rd, MOP_SPECIAL_ADDU ) 
+#define MI_B( off )		GEN_MIPS_OPCODE_2REG( MOP_BEQ, 0, 0, off )
+#define MI_BGEZ( rs, off )	GEN_MIPS_OPCODE_2REG( 1, rs, MOP_BGEZ, off ) 
+#define MI_JR( rs )		GEN_MIPS_OPCODE_3REG( MOP_SPECIAL, rs, 0, 0, MOP_SPECIAL_JR )
+#define MI_LW( rt, base, off )	GEN_MIPS_OPCODE_2REG( MOP_LW, base, rt, (int16_t)(off) )
+#define MI_NOP()		MOP_NOP
+#define MI_NOR( rd, rs, rt )	GEN_MIPS_OPCODE_3REG( MOP_SPECIAL, rs, rt, rd, MOP_SPECIAL_NOR ) 
+#define MI_NOT( rd, rs )	MI_NOR( rd, rs, _zero ) 
+#define MI_SLL( rd, rt, sa )	GEN_MIPS_OPCODE_3REG_TERT( MOP_SPECIAL, _zero, rt, rd, MOP_SPEICAL_SLL, sa ) 
+#define MI_SUBU( rd, rs, rt ) 	GEN_MIPS_OPCODE_3REG( MOP_SPECIAL, rs, rt, rd, MOP_SPECIAL_SUBU ) 
+#define MI_SW( rt, base, off )	GEN_MIPS_OPCODE_2REG( MOP_SW, base, rt, (int16_t)(off) )
+
 #endif

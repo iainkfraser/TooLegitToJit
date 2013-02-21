@@ -9,7 +9,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include "list.h"
-
+#include "mc_emitter.h"
 
 enum tag { TNUMBER = 0, TGARBAGE = 1, TNIL = 2, TUSER = 3, TNAT = 4 };	// NAT = not a type
 #define NR_TAG_BITS	2	// number of bits needed to encode tag
@@ -26,7 +26,7 @@ typedef struct constant {
 	bool			isimmed;
 	int			type;
 
-	union { 
+	struct { 
 		int 			value;
 		struct {
 			bool		isspilled;	// in data section
@@ -48,6 +48,13 @@ typedef struct operand {
 		int		reg;
 		int		k;	// immediate constant
 	};
+
+	/*
+	* Bitfield info 
+	*/
+	bool bitfield;
+	
+
 } operand;
 
 typedef struct mips_emitter {
@@ -78,6 +85,16 @@ void push_branch( mips_emitter* me, int line );
     } \
   } while(0)
 
+#define GET_EC( mc )			( (mc)->size / 4 )		// emit counter 
+
+#define DO_BRANCH( tec, sec )		( ( tec ) - ( sec + 1 ) )
+#define BRANCH_FROM( mc, sec )		DO_BRANCH( GET_EC( mc ), sec )		
+#define BRANCH_TO( mc, tec )		DO_BRANCH( tec, GET_EC( mc ) )
+
+#define REENCODE_OP( mc, value, ec )						\
+		do{								\
+			(mc)->mcode[ (ec)  ] = (value);				\
+		} while( 0 )
 
 #define ENCODE_OP( mc, value )								\
 	do{										\
@@ -88,6 +105,12 @@ void push_branch( mips_emitter* me, int line );
 
 #define ENCODE_DATA( mc, value )	ENCODE_OP( mc, value )
 
+#define EMIT( x )	ENCODE_OP( me, x )
+#define REEMIT( x, y )	REENCODE_OP( me, x, y )
+
+#define OP_TARGETREG( r )		{ .tag = OT_REG, { .reg = ( r ) } }
+#define OP_TARGETDADDR( r, off ) 	{ .tag = OT_DIRECTADDR, { .base = ( r ), .offset = ( off ) } }
+
 /*
 * Util functions
 */
@@ -96,5 +119,7 @@ operand local_to_operand( struct mips_emitter* me, int l );
 operand luaoperand_to_operand( struct mips_emitter* me, loperand op );
 int nr_slots( struct mips_emitter* me );
 void load_bigim( struct mips_emitter* me, int reg, int k );
-void emit_gettable( void** mce, loperand dst, loperand table, loperand idx );
+void loadim( struct mips_emitter* me, int reg, int k );
+void do_assign( struct mips_emitter* me, operand d, operand s );
+
 #endif

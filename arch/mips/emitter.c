@@ -15,24 +15,23 @@
 #include <string.h>
 #include <assert.h>
 #include "mc_emitter.h"
-#include "regdef.h"
-#include "mips_opcodes.h"
 #include "list.h"
-#include "mips_emitter.h"
-#include "mips_mapping.h"
+#include "arch/mips/regdef.h"
+#include "arch/mips/opcodes.h"
+#include "arch/mips/emitter.h"
+#include "arch/mips/mapping.h"
 #include "bit_manip.h"
 #include "table.h"
 #include "func.h"
 
 #define REF	( *( mips_emitter**)mce ) 
-#define OP_TARGETREG( r )	{ .tag = OT_REG, { .reg = ( r ) } }
 
 void load_bigim( struct mips_emitter* me, int reg, int k ){
 	ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( MOP_LUI, 0, reg, ( k >> 16 ) & 0xffff ) );
 	ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( MOP_ORI, reg, reg, k & 0xffff ) );
 }
 
-static void loadim( struct mips_emitter* me, int reg, int k ){
+void loadim( struct mips_emitter* me, int reg, int k ){
 	if( k >= -32768 && k <= 65535 ){
 		if( k < 0 )
 			ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( MOP_ORI, _zero, reg, k ) );
@@ -88,7 +87,7 @@ static void bop( struct mips_emitter* me, loperand d, loperand s, loperand t, in
 				luaoperand_to_operand( me, t ), op, special );
 }
 
-static void do_assign( struct mips_emitter* me, operand d, operand s ){
+void do_assign( struct mips_emitter* me, operand d, operand s ){
 	assert( d.tag == OT_REG || d.tag == OT_DIRECTADDR );	
 
 	int reg = d.tag == OT_REG ? d.reg : TEMP_REG1; 
