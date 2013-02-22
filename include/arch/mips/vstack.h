@@ -26,5 +26,8 @@ void vreg_runtime_stack_type_load( struct mips_emitter* me, int rstack, int roff
 void vreg_runtime_stack_value_store( struct mips_emitter* me, int rstack, int roff, int ioff, int rvalue );
 void vreg_runtime_stack_type_store( struct mips_emitter* me, int rstack, int roff, int ioff, int rvalue );
 
+void store_frame( struct mips_emitter* me );
+void load_frame( struct mips_emitter* me );
+
 #endif
 

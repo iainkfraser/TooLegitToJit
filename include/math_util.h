@@ -22,5 +22,9 @@
 
 #define int_ceil_div( a,  b )	\
 	( ( ( a ) + ( ( b ) - 1 ) ) / ( b )  )
+
+#define swap(a, b) \
+         do { typeof(a) __tmp = (a); (a) = (b); (b) = __tmp; } while (0)
+
 #endif
 

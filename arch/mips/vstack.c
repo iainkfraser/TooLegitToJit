@@ -7,6 +7,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include "math_util.h"
 #include "mc_emitter.h"
 #include "arch/mips/regdef.h"
 #include "arch/mips/opcodes.h"
@@ -117,6 +118,45 @@ void vreg_runtime_stack_value_store( struct mips_emitter* me, int rstack, int ro
 void vreg_runtime_stack_type_store( struct mips_emitter* me, int rstack, int roff, int ioff, int rvalue ){
 	vreg_runtime_stack_value_store( me, rstack, roff, ioff, rvalue );	
 }
+
+
+/*
+* Save and reload stack frames
+*/
+
+void x_frame( struct mips_emitter* me, bool isstore ){
+	operand st,sv,dt,dv;
+
+	for( int i =0; i < me->nr_locals; i++ ){
+
+		sv = vreg_compiletime_reg_value( me->nr_locals, i );
+		st = vreg_compiletime_reg_type( me->nr_locals, i );
+		dv = vreg_compiletime_stack_value( me->nr_locals, i );
+		dt = vreg_compiletime_stack_type( me->nr_locals, i );
+
+		if( !isstore ){
+			swap( sv, dv );
+			swap( st, dt );
+		}		
+
+		if( sv.tag == OT_REG )
+			do_assign( me, dv, sv );
+
+		if( st.tag == OT_REG )
+			do_assign( me, dt, st );
+
+	}
+}
+
+void store_frame( struct mips_emitter* me ){
+	x_frame( me, true );
+}
+
+void load_frame( struct mips_emitter* me ){
+	x_frame( me, false );
+	// TODO: reload the constants 
+}
+
 
 /*
 * Map Lua constants / locals to live position.

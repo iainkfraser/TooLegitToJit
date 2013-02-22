@@ -66,6 +66,16 @@ static void loadreg( struct mips_emitter* me, operand* d, int temp_reg, bool for
 	d->reg = temp_reg;
 } 
 
+void do_assign( struct mips_emitter* me, operand d, operand s ){
+	assert( d.tag == OT_REG || d.tag == OT_DIRECTADDR );	
+
+	int reg = d.tag == OT_REG ? d.reg : TEMP_REG1; 
+	loadreg( me, &s, reg, d.tag == OT_REG );
+
+	if( d.tag == OT_DIRECTADDR )		// | sw reg, d.addr 
+		ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( MOP_SW, d.base, s.reg, d.offset ) );
+}
+
 static void do_bop( struct mips_emitter* me, operand d, operand s, operand t, int op, int special ){
 	assert( d.tag == OT_REG || d.tag == OT_DIRECTADDR );
 
@@ -88,15 +98,6 @@ static void bop( struct mips_emitter* me, loperand d, loperand s, loperand t, in
 				luaoperand_value_to_operand( me, t ), op, special );
 }
 
-void do_assign( struct mips_emitter* me, operand d, operand s ){
-	assert( d.tag == OT_REG || d.tag == OT_DIRECTADDR );	
-
-	int reg = d.tag == OT_REG ? d.reg : TEMP_REG1; 
-	loadreg( me, &s, reg, d.tag == OT_REG );
-
-	if( d.tag == OT_DIRECTADDR )		// | sw reg, d.addr 
-		ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( MOP_SW, d.base, reg, d.offset ) );
-}
 
 
 void emit_ret( void** mce ){
@@ -285,28 +286,30 @@ void emit_closure( void** mce, loperand dst, struct proto* p ){
 
 	operand src = OP_TARGETREG( TEMP_REG1 ); 
 	loadim( REF, TEMP_REG1, (uintptr_t)p->code_start );
-	do_assign( REF, luaoperand_to_operand( REF, dst ), src );
+	do_assign( REF, luaoperand_value_to_operand( REF, dst ), src );
 }
 
 
 void emit_call( void** mce, loperand closure, int nr_params, int nr_results ){
 	assert( closure.islocal );
+
 	struct mips_emitter* me = REF;
 
-	operand arg_clo = OP_TARGETREG( _a0 ); 
-	operand arg_idx = OP_TARGETREG( _a1 ); 
-	operand arg_args = OP_TARGETREG( _a2 );
-	operand arg_res = OP_TARGETREG( _a3 );
+	// store live registers 
+	store_frame( me );	
 
-	do_assign( REF, arg_clo, luaoperand_to_operand( REF, closure ) );	
+	// load args
+	operand arg_clo = OP_TARGETREG( _a0 ); 
+	do_assign( REF, arg_clo, luaoperand_value_to_operand( REF, closure ) );	
 	loadim( REF, _a1, (uintptr_t)closure.index );
-	loadim( REF, _a2, (uintptr_t)nr_params );
+	loadim( REF, _a2, (uintptr_t)nr_params );	// TODO: 1) -1 needed 2) negate twos complement  
 	loadim( REF, _a3, (uintptr_t)nr_results );
 
 	// call
 	EMIT( MI_JALR( _a0 ) );
 	EMIT( MI_NOP() );
 
-	// TODO: reload registers 
+	// reload registers ( including constants ) 
+	load_frame( me );
 }
 
