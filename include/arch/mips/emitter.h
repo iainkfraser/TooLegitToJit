@@ -109,7 +109,7 @@ void push_branch( mips_emitter* me, int line );
 #define REEMIT( x, y )	REENCODE_OP( me, x, y )
 
 #define OP_TARGETREG( r )		{ .tag = OT_REG, { .reg = ( r ) } }
-#define OP_TARGETDADDR( r, off ) 	{ .tag = OT_DIRECTADDR, { .base = ( r ), .offset = ( off ) } }
+#define OP_TARGETDADDR( r, off ) 	{ .tag = OT_DIRECTADDR, { { .base = ( r ), .offset = ( off ) } } }
 
 /*
 * Util functions

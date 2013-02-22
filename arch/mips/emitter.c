@@ -277,25 +277,39 @@ void emit_gettable( void** mce, loperand dst, loperand table, loperand idx ){
 }
 
 void emit_closure( void** mce, loperand dst, struct proto* p ){
-	loadim( REF, _a0, (uintptr_t)p );
 	// TODO: load the current closure into the _a1
-	call_fn( REF, (uintptr_t)&closure_create, 0 );
+//	loadim( REF, _a0, (uintptr_t)p );
+//	call_fn( REF, (uintptr_t)&closure_create, 0 );
+
+
+	operand src = OP_TARGETREG( TEMP_REG1 ); 
+	loadim( REF, TEMP_REG1, (uintptr_t)p->code_start );
+	do_assign( REF, luaoperand_to_operand( REF, dst ), src );
 }
 
 
 void emit_call( void** mce, loperand closure, int nr_params, int nr_results ){
-	// TODO: save temporaries
+	assert( closure.islocal );
+	struct mips_emitter* me = REF;
 
 	// TODO: verify its a closure 
-	operand argc = OP_TARGETREG( _a0 ); 
-	do_assign( REF, argc, luaoperand_to_operand( REF, closure ) );	
+	// TODO: save all vregs and types  
 
-	// push arguments onto the stack. Cannot use register move cause can't use dynamic instructions.
+	operand arg_clo = OP_TARGETREG( _a0 ); 
+	operand arg_idx = OP_TARGETREG( _a1 ); 
+	operand arg_args = OP_TARGETREG( _a2 );
+	operand arg_res = OP_TARGETREG( _a3 );
 
-	// copy dst reg to a1
-	// copy arg len to a2
-	// copy res len to a3
 
-	printf("call %d %d\n", nr_params, nr_results );
+	do_assign( REF, arg_clo, luaoperand_to_operand( REF, closure ) );	
+	loadim( REF, _a1, (uintptr_t)closure.index );
+	loadim( REF, _a2, (uintptr_t)nr_params );
+	loadim( REF, _a3, (uintptr_t)nr_results );
+
+	// call
+	EMIT( MI_JALR( _a0 ) );
+	EMIT( MI_NOP() );
+
+	// TODO: reload registers 
 }
 
