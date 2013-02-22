@@ -8,6 +8,8 @@
 #define _VSTACK_H_
 
 
+int nr_livereg_vreg_occupy( int nr_locals );
+
 operand vreg_compiletime_stack_value( int nr_locals, int vreg );
 operand vreg_compiletime_stack_type( int nr_locals, int vreg );
 operand vreg_compiletime_reg_value( int nr_locals, int vreg );

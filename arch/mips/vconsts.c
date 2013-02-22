@@ -10,7 +10,8 @@
 #include "mc_emitter.h"
 #include "arch/mips/regdef.h"
 #include "arch/mips/emitter.h"
-#include "arch/mips/mapping.h"
+#include "arch/mips/regmap.h"
+#include "arch/mips/vstack.h"
 
 operand const_to_operand( struct mips_emitter* me, int k ){
 	operand r;
@@ -38,7 +39,7 @@ void const_write_section( struct mips_emitter* me, int nr_locals ){
 	struct constant* c;
 
 	// spare physical registers 
-	int reg = local_vreg_count( nr_locals );
+	int reg = nr_livereg_vreg_occupy( nr_locals ); 
 	int spare_preg = NR_REGISTERS - reg; 
 
 

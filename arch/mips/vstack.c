@@ -11,7 +11,7 @@
 #include "arch/mips/regdef.h"
 #include "arch/mips/opcodes.h"
 #include "arch/mips/emitter.h"
-#include "arch/mips/mapping.h"
+#include "arch/mips/regmap.h"
 
 
 /*
@@ -30,21 +30,12 @@ operand vreg_compiletime_stack_type( int nr_locals, int vreg ){
 	return r;
 }
 
+int nr_livereg_vreg_occupy( int nr_locals ){
+	return 2 * nr_locals;
+}
 
 static operand idx_physical_reg( int vreg ){
-	int r;
-
-	if( vreg < 8 )
-		r =  _t0 + vreg;
-	else if ( vreg < 10 )
-		r = _t8 + ( vreg - 8 );
-	else if ( vreg < 18 )
-		r = _s0 + ( vreg - 10 );
-	else 
-		assert( false );
-
-
-	operand ret =  OP_TARGETREG( r );
+	operand ret =  OP_TARGETREG( vreg_to_physical_reg( vreg ) );
 	return ret;
 }
 
@@ -128,79 +119,37 @@ void vreg_runtime_stack_type_store( struct mips_emitter* me, int rstack, int rof
 }
 
 /*
-* Old Shitty Code 
+* Map Lua constants / locals to live position.
 */
 
-#if 1  
+extern operand const_to_operand( struct mips_emitter* me, int k );
 
-int tag_count( int nr_locals ){
-	return int_ceil_div( nr_locals, NR_TAGS_IN_WORD );
+operand lualocal_value_to_operand( struct mips_emitter* me, int vreg ){
+	return vreg_compiletime_reg_value( me->nr_locals, vreg );
 }
 
-int local_vreg_count( int nr_locals ){
-	return tag_count( nr_locals ) + nr_locals;
+operand lualocal_type_to_operand( struct mips_emitter* me, int vreg ){
+	return vreg_compiletime_reg_type( me->nr_locals, vreg ); 
 }
 
-int local_vreg( int local ){
-	return tag_count( local + 1 ) + local;
-}
-
-int total_vreg_count( int nr_locals, int nr_const ){
-	return local_vreg_count( nr_locals ) + nr_const;
-}
-
-int local_spill( int nr_locals ){
-	const int vregs = local_vreg_count( nr_locals ); 
-	return max( 0, vregs - NR_REGISTERS );
-} 
-
-int const_spill( int nr_locals, int nr_const ){
-	const int vregs = total_vreg_count( nr_locals, nr_const );
-	return max( 0, vregs - NR_REGISTERS );
+operand luak_value_to_operand( struct mips_emitter* me, int k ){
+	return const_to_operand( me, k );
 }
 
 
-int vreg_to_reg( int vreg ){
-	assert( vreg < NR_REGISTERS );
-	
-	if( vreg < 8 )
-		return _t0 + vreg;
-	else if ( vreg < 10 )
-		return _t8 + ( vreg - 8 );
-	else if ( vreg < 18 )
-		return _s0 + ( vreg - 10 );
-	else 
-		assert( false );
+operand luak_type_to_operand( struct mips_emitter* me, int k ){
+	assert( false );
+}
+
+operand luaoperand_value_to_operand( struct mips_emitter* me, loperand op ){
+	return op.islocal ? 
+		lualocal_value_to_operand( me, op.index ) :
+		luak_value_to_operand( me, op.index );
 }
 
 
-operand local_to_operand( struct mips_emitter* me, int l ){
-	operand r;
-
-	int vreg = local_vreg( l );
-	printf("l:%d v:%d\n", l, vreg );
-
-	if( vreg < NR_REGISTERS ) {	
-		r.tag = OT_REG;
-		r.reg = vreg_to_reg( vreg );
-	} else { 
-		r.tag = OT_DIRECTADDR;
-		r.base = _sp;
-		r.offset = 8 + ( vreg - NR_REGISTERS );		// saved registers stored at bottom of stack hence +8 
-	}
-
-	return r;
+operand luaoperand_type_to_operand( struct mips_emitter* me, loperand op ){
+	return op.islocal ? 
+		lualocal_type_to_operand( me, op.index ) :
+		luak_type_to_operand( me, op.index );
 }
-
-
-operand luaoperand_to_operand( struct mips_emitter* me, loperand op ){
-	return op.islocal ? local_to_operand( me, op.index )  : const_to_operand( me, op.index );
-}
-
-
-int nr_slots( struct mips_emitter* me ){
-	const int locals = me->tregs - me->cregs;	// locals need tag
-	return local_vreg_count( locals ) + me->cregs;	
-}
-
-#endif 

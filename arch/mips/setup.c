@@ -10,8 +10,9 @@
 #include "arch/mips/regdef.h"
 #include "arch/mips/opcodes.h"
 #include "arch/mips/emitter.h"
-#include "arch/mips/mapping.h"
+#include "arch/mips/regmap.h"
 #include "arch/mips/xlogue.h"
+#include "arch/mips/vconsts.h"
 #include "lopcodes.h"
 
 void mce_init( void** mce, size_t vmlines ){
@@ -39,10 +40,10 @@ void mce_proto_init( void** mce, size_t nr_protos ){
 void mce_start( void** mce , int nr_locals, int nr_params ){
 	mips_emitter* me = *( mips_emitter**)mce;
 
-	me->tregs = nr_locals + me->cregs;	
+	me->nr_locals = nr_locals;
 
 	// write datasection first
-	const_write_section( me, nr_locals );
+//	const_write_section( me, nr_locals );
 	
 	// write epilogue - remember so we can reuse it 
 	emit_epilogue( me, nr_locals );
