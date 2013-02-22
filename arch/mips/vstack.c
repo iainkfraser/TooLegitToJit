@@ -69,22 +69,25 @@ void vreg_runtime_reg_type( int nr_locals, int vreg ){
 
 
 void vreg_runtime_stack_value( struct mips_emitter* me, int nr_locals, int ridx, int rout ){
+	// i = i + 1	# start 1 position after calling position
 	// i << 3	# 8i
-	// ~i		# -8i  
+	// -i		# -8i  
 	// i += 8(n-1)	# 8(n-1) - 8i
 	// rout = sp + i 
-	EMIT( MI_SLL( rout, ridx, 3 ) );
-	EMIT( MI_NOT( rout, rout ) );
+	EMIT( MI_ADDIU( rout, ridx, 1 ) );
+	EMIT( MI_SLL( rout, rout, 3 ) );
+	EMIT( MI_NEGU( rout, rout ) );
 	EMIT( MI_ADDIU( rout, rout, 8 * ( nr_locals - 1 ) ) );
 	EMIT( MI_ADDU( rout, _sp, rout ) ); 
 }
-
+/*
 void vreg_runtime_stack_type( struct mips_emitter* me, int nr_locals, int ridx, int rout ){
-	EMIT( MI_SLL( rout, ridx, 3 ) );
-	EMIT( MI_NOT( rout, rout ) );
+	EMIT( MI_ADDIU( rout, ridx, 1 ) );
+	EMIT( MI_SLL( rout, rout, 3 ) );
+	EMIT( MI_SUBU( rout, _zero, rout ) );
 	EMIT( MI_ADDIU( rout, rout, 8 * ( nr_locals - 1 ) + 4 ) );
 	EMIT( MI_ADDU( rout, _sp, rout ) ); 
-}
+}*/
 
 void vreg_runtime_stack_value_load( struct mips_emitter* me, int rstack, int roff, int ioff, int rout ){
 	if( roff != _zero ){	 
@@ -92,11 +95,17 @@ void vreg_runtime_stack_value_load( struct mips_emitter* me, int rstack, int rof
 		rstack = rout;
 	}
 
-	EMIT( MI_LW( rout, rstack, ioff * 8 ) ); 
+	EMIT( MI_LW( rout, rstack, ioff * -8 ) ); 
 }
 
+// take stack offset 
 void vreg_runtime_stack_type_load( struct mips_emitter* me, int rstack, int roff, int ioff, int rout ){
-	vreg_runtime_stack_value_load( me, rstack, roff, ioff, rout );
+	if( roff != _zero ){	 
+		EMIT( MI_ADDU( rout, rstack, roff ) );
+		rstack = rout;
+	}
+
+	EMIT( MI_LW( rout, rstack, ioff * -8 + 4 ) ); 
 }
 
 
@@ -108,7 +117,7 @@ void vreg_runtime_stack_value_store( struct mips_emitter* me, int rstack, int ro
 		base = roff;
 	}
 
-	EMIT( MI_SW( rvalue, base, ioff * 8 ) );
+	EMIT( MI_SW( rvalue, base, ioff * -8 ) );
 
 	if( roff != _zero )
 		 EMIT( MI_SUBU( roff, roff, rstack ) );
@@ -116,7 +125,17 @@ void vreg_runtime_stack_value_store( struct mips_emitter* me, int rstack, int ro
 }
 
 void vreg_runtime_stack_type_store( struct mips_emitter* me, int rstack, int roff, int ioff, int rvalue ){
-	vreg_runtime_stack_value_store( me, rstack, roff, ioff, rvalue );	
+	int base = rstack;
+
+	if( roff != _zero ){	 
+		EMIT( MI_ADDU( roff, rstack, roff ) );
+		base = roff;
+	}
+
+	EMIT( MI_SW( rvalue, base, ioff * -8 + 4 ) );
+
+	if( roff != _zero )
+		 EMIT( MI_SUBU( roff, roff, rstack ) );
 }
 
 

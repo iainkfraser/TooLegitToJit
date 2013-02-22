@@ -74,23 +74,36 @@ static void emit_load_params( mips_emitter* me, int nr_locals, int nr_params ){
 	operand odst_value, odst_type, osrc_value, osrc_type;
 
 	// registers used in operation - don't overwrite arguments and unspilled vregs.
+#if 0
 	const int reg_value = _v0;
 	const int reg_type = _v1;
+#else
+	const int reg_value = _a1;
+#endif
 
-
-	// load argument type and value
+	// load argument type and value - TODO: wrong # of locals ( not for prior function ) 
+#if 0
 	vreg_runtime_stack_value( me, nr_locals, _a1, reg_value );
 	vreg_runtime_stack_type( me, nr_locals, _a1, reg_type );
+#endif
 	
 	// set unpassed arguments to nil  	
+#if 0
 	emit_nil_args( me, nr_params, reg_value, reg_type, _a1, _a2 );
+#else
+	emit_nil_args( me, nr_params, reg_value, reg_value, _a1, _a2 );
+#endif
 	
 	for( int i = 0; i < nr_params; i++ ){
 		odst_value = vreg_compiletime_reg_value( nr_locals, i );		
 		odst_type = vreg_compiletime_reg_type( nr_locals, i );
 
-		emit_copy_param( me, nr_locals, i, odst_value, reg_value, true );
-		emit_copy_param( me, nr_locals, i, odst_type, reg_type, false );
+		emit_copy_param( me, nr_locals, i + 1, odst_value, reg_value, true );
+#if 0
+		emit_copy_param( me, nr_locals, i + 1, odst_type, reg_type, false );
+#else
+		emit_copy_param( me, nr_locals, i + 1, odst_type, reg_value, false );
+#endif
 	}	
 }
 

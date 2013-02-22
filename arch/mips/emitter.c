@@ -301,8 +301,18 @@ void emit_call( void** mce, loperand closure, int nr_params, int nr_results ){
 	// load args
 	operand arg_clo = OP_TARGETREG( _a0 ); 
 	do_assign( REF, arg_clo, luaoperand_value_to_operand( REF, closure ) );	
+
+#if 0	// this way requires the function to know the nr_locals in this frame
 	loadim( REF, _a1, (uintptr_t)closure.index );
-	loadim( REF, _a2, (uintptr_t)nr_params );	// TODO: 1) -1 needed 2) negate twos complement  
+#else
+	operand addr = vreg_compiletime_stack_value( me->nr_locals, closure.index );
+	EMIT( MI_ADDIU( _a1, _sp, addr.offset ) );
+#endif
+
+	if( nr_params > 0 )	// if zero returning function will load it 
+		loadim( REF, _a2, (uintptr_t)nr_params - 1 );	 
+
+
 	loadim( REF, _a3, (uintptr_t)nr_results );
 
 	// call

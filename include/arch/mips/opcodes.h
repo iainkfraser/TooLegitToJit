@@ -128,4 +128,11 @@
 #define MI_SUBU( rd, rs, rt ) 	GEN_MIPS_OPCODE_3REG( MOP_SPECIAL, rs, rt, rd, MOP_SPECIAL_SUBU ) 
 #define MI_SW( rt, base, off )	GEN_MIPS_OPCODE_2REG( MOP_SW, base, rt, (int16_t)(off) )
 
+
+/*
+* Synthetic instructions 
+*/
+#define MI_NEGU( rd, rs )	MI_SUBU( rd, _zero, rs )
+
+
 #endif
