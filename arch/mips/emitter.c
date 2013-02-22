@@ -19,7 +19,8 @@
 #include "arch/mips/regdef.h"
 #include "arch/mips/opcodes.h"
 #include "arch/mips/emitter.h"
-#include "arch/mips/mapping.h"
+#include "arch/mips/vstack.h"
+#include "arch/mips/regmap.h"
 #include "bit_manip.h"
 #include "table.h"
 #include "func.h"
@@ -83,8 +84,8 @@ static void do_bop( struct mips_emitter* me, operand d, operand s, operand t, in
 
 static void bop( struct mips_emitter* me, loperand d, loperand s, loperand t, int op, int special ){
 	assert( d.islocal );
-	do_bop( me, luaoperand_to_operand( me, d ),  luaoperand_to_operand( me, s ), 
-				luaoperand_to_operand( me, t ), op, special );
+	do_bop( me, luaoperand_value_to_operand( me, d ),  luaoperand_value_to_operand( me, s ), 
+				luaoperand_value_to_operand( me, t ), op, special );
 }
 
 void do_assign( struct mips_emitter* me, operand d, operand s ){
@@ -106,12 +107,12 @@ void emit_ret( void** mce ){
 
 
 void emit_loadk( void** mce, int l, int k ){
-	do_assign( REF, local_to_operand( REF, l ), const_to_operand( REF, k ) );
+	do_assign( REF, lualocal_value_to_operand( REF, l ), luak_value_to_operand( REF, k ) );
 }
 
 void emit_move( void** mce, loperand d, loperand s ){
 	assert( d.islocal );	
-	do_assign( REF, luaoperand_to_operand( REF, d ), luaoperand_to_operand( REF,s ) );
+	do_assign( REF, luaoperand_value_to_operand( REF, d ), luaoperand_value_to_operand( REF,s ) );
 }
 
 void emit_add( void** mce, loperand d, loperand s, loperand t ){
@@ -128,8 +129,8 @@ void emit_mul( void** mce, loperand d, loperand s, loperand t ){
 
 static void do_div( void **mce, loperand d, loperand s, loperand t, bool islow  ){
 	operand nil = OP_TARGETREG( _zero );	// dst is in hi and lo see instruction encoding
-	operand dst = luaoperand_to_operand( REF, d );
-	do_bop( REF, nil, luaoperand_to_operand( REF, s ), luaoperand_to_operand( REF, t ),
+	operand dst = luaoperand_value_to_operand( REF, d );
+	do_bop( REF, nil, luaoperand_value_to_operand( REF, s ), luaoperand_value_to_operand( REF, t ),
 			 MOP_SPECIAL_DIV, MOP_SPECIAL );
 
 	// load the quotient into the dest
@@ -183,8 +184,8 @@ void emit_forloop( void** mce, loperand loopvar, int pc, int j ){
 	//| nop 
 
 	operand dst = { .tag = OT_REG, { .reg = TEMP_REG1 } };
-	do_bop( REF, dst, luaoperand_to_operand( REF, loopvar ), 
-			luaoperand_to_operand( REF, limit ), MOP_SPECIAL_SUBU, MOP_SPECIAL );
+	do_bop( REF, dst, luaoperand_value_to_operand( REF, loopvar ), 
+			luaoperand_value_to_operand( REF, limit ), MOP_SPECIAL_SUBU, MOP_SPECIAL );
 
 	
 	ENCODE_OP( REF, GEN_MIPS_OPCODE_2REG( MOP_BGTZ, TEMP_REG1, 0, 3 ) );
@@ -199,9 +200,9 @@ void emit_forloop( void** mce, loperand loopvar, int pc, int j ){
 
 static void call_fn( struct mips_emitter* me, uintptr_t fn, size_t argsz ){
 	// first 10 virtual regs mapped to temps so save them 
-	int temps = min( 10, nr_slots( me ) );
+	int temps = min( 10, nr_livereg_vreg_occupy( me->nr_locals ) );
 	for( int i=0; i < temps; i++ ){
-		int treg = vreg_to_reg( i );
+		int treg = vreg_to_physical_reg( i );
 		ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( MOP_SW, _sp, treg, (int16_t)-( (i+1) * 4 ) ) );
 	}
 		
@@ -221,7 +222,7 @@ static void call_fn( struct mips_emitter* me, uintptr_t fn, size_t argsz ){
 	
 	// reload temps
 	for( int i=0; i < temps; i++ ){
-		int treg = vreg_to_reg( i );
+		int treg = vreg_to_physical_reg( i );
 		ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( MOP_LW, _sp, treg, (int16_t)-( (i+1) * 4 ) ) );
 	}
 }
@@ -233,7 +234,7 @@ void emit_newtable( void** mce, loperand dst, int array, int hash ){
 	call_fn( REF, (uintptr_t)&table_create, 0 );
 
 	operand src = OP_TARGETREG( _v0 ); 
-	do_assign( REF, luaoperand_to_operand( REF, dst ),  src );
+	do_assign( REF, luaoperand_value_to_operand( REF, dst ),  src );
 }
 
 void emit_setlist( void** mce, loperand table, int n, int block ){
@@ -248,10 +249,10 @@ void emit_setlist( void** mce, loperand table, int n, int block ){
 
 		loperand lval = { .islocal = true, .index = table.index + i };	
 
-		do_assign( REF, dst, luaoperand_to_operand( REF, table ) );
+		do_assign( REF, dst, luaoperand_value_to_operand( REF, table ) );
 		loadim( REF, _a1, offset + i );
 		loadim( REF, _a2, 0 );	// TODO: type
-		do_assign( REF, val, luaoperand_to_operand( REF, lval ) );
+		do_assign( REF, val, luaoperand_value_to_operand( REF, lval ) );
 	
 		call_fn( REF, (uintptr_t)&table_set, 0 );	
 
@@ -266,13 +267,13 @@ void emit_gettable( void** mce, loperand dst, loperand table, loperand idx ){
 	operand i = OP_TARGETREG( _a1 );
 	operand src = OP_TARGETREG( _v0 ); 
 
-	do_assign( REF, t, luaoperand_to_operand( REF, table ) );
-	do_assign( REF, i, luaoperand_to_operand( REF, idx ) );
+	do_assign( REF, t, luaoperand_value_to_operand( REF, table ) );
+	do_assign( REF, i, luaoperand_value_to_operand( REF, idx ) );
 	// TODO: type
 
 	call_fn( REF, (uintptr_t)&table_get, 0 );
 
-	do_assign( REF, luaoperand_to_operand( REF, dst ),  src );
+	do_assign( REF, luaoperand_value_to_operand( REF, dst ),  src );
 
 }
 
@@ -288,7 +289,7 @@ void emit_call( void** mce, loperand closure, int nr_params, int nr_results ){
 
 	// TODO: verify its a closure 
 	operand argc = OP_TARGETREG( _a0 ); 
-	do_assign( REF, argc, luaoperand_to_operand( REF, closure ) );	
+	do_assign( REF, argc, luaoperand_value_to_operand( REF, closure ) );	
 
 	// push arguments onto the stack. Cannot use register move cause can't use dynamic instructions.
 

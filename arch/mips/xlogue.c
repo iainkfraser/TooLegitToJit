@@ -11,8 +11,9 @@
 #include "arch/mips/regdef.h"
 #include "arch/mips/opcodes.h"
 #include "arch/mips/emitter.h"
-#include "arch/mips/mapping.h"
+#include "arch/mips/regmap.h"
 #include "arch/mips/vstack.h"
+#include "arch/mips/vconsts.h"
 #include "arch/mips/xlogue.h"
 
 

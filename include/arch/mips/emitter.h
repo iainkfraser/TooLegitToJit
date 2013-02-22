@@ -60,12 +60,12 @@ typedef struct operand {
 typedef struct mips_emitter {
 	uint32_t*		mcode;		// machine code
 	uint32_t*		jt;		// jump table
+	size_t			nr_locals;	// number of virtual regs
 	size_t 			size;		// size of machine code
 	size_t			constsize;	// size of const array
 	size_t			bufsize;	// size of machine code buffer
 	struct constant*	consts;		// function constants
 	int			cregs;		// number of constant virtual registers.
-	int			tregs;		// total virtual regs i.e. locals + non immediate registers
 	uint32_t		epi;		// epilogue machine code pointer
 	uint32_t		pro;		// prologue machine code pointer
 	struct list_head	head;		// linked list of branch ops that need to be linked. 
@@ -114,10 +114,15 @@ void push_branch( mips_emitter* me, int line );
 /*
 * Util functions
 */
-operand const_to_operand( struct mips_emitter* me, int k );
-operand local_to_operand( struct mips_emitter* me, int l );
-operand luaoperand_to_operand( struct mips_emitter* me, loperand op );
-int nr_slots( struct mips_emitter* me );
+
+operand luaoperand_value_to_operand( struct mips_emitter* me, loperand op );
+operand luaoperand_type_to_operand( struct mips_emitter* me, loperand op );
+operand lualocal_value_to_operand( struct mips_emitter* me, int vreg );
+operand lualocal_type_to_operand( struct mips_emitter* me, int vreg );
+operand luak_value_to_operand( struct mips_emitter* me, int k );
+operand luak_type_to_operand( struct mips_emitter* me, int k );
+
+
 void load_bigim( struct mips_emitter* me, int reg, int k );
 void loadim( struct mips_emitter* me, int reg, int k );
 void do_assign( struct mips_emitter* me, operand d, operand s );
