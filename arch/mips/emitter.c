@@ -6,6 +6,7 @@
 * update dynasm to do so.
 *
 * 1:1 mapping of LuaVM opcode to function emitter.
+* TODO: remove this file 
 */
 
 #include <stdio.h>
@@ -27,7 +28,7 @@
 #include "operand.h"
 #include "stack.h"
 
-
+#if 0
 void load_bigim( struct arch_emitter* me, int reg, int k ){
 	ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( MOP_LUI, 0, reg, ( k >> 16 ) & 0xffff ) );
 	ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( MOP_ORI, reg, reg, k & 0xffff ) );
@@ -43,6 +44,7 @@ void loadim( struct arch_emitter* me, int reg, int k ){
 		load_bigim( me, reg, k );
 	}
 }
+#endif
 
 static void call_fn( struct arch_emitter* me, uintptr_t fn, size_t argsz ){
 	// first 10 virtual regs mapped to temps so save them 
@@ -73,29 +75,7 @@ static void call_fn( struct arch_emitter* me, uintptr_t fn, size_t argsz ){
 	}
 }
 
-// Load to register IF NOT IN REGISTER, different to ASSIGN 
-static void loadreg( struct arch_emitter* me, operand* d, int temp_reg, bool forcereg ){
-	switch( d->tag ){
-		case OT_IMMED:
-			loadim( me, temp_reg, d->k );	// only ADDi special case not worth extra work considering no cost for reg move
-			break;
-		case OT_DIRECTADDR:
-			ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( MOP_LW, d->base, temp_reg, d->offset ) );
-			break;
-		case OT_REG:
-			if( !forcereg )
-				return;
-			ENCODE_OP( me, GEN_MIPS_OPCODE_3REG( MOP_SPECIAL, d->reg, _zero, temp_reg, MOP_SPECIAL_OR ) );
-			break;
-		default:
-			assert( false );
-	}
-
-	// update to reg operand
-	d->tag = OT_REG;
-	d->reg = temp_reg;
-} 
-
+#if 0
 void do_assign( struct arch_emitter* me, operand d, operand s ){
 	assert( d.tag == OT_REG || d.tag == OT_DIRECTADDR );	
 
@@ -128,15 +108,4 @@ static void bop( struct arch_emitter* me, loperand d, loperand s, loperand t, in
 				loperand_to_operand( me, t ).value, op, special );
 }
 
-
-
-
-
-/*
-* Platfrom depdendent code ( TODO: the above should be plat indepedent )
-*/
-
-void arch_move( struct arch_emitter* me, operand d, operand s ){
-	do_assign( me, d, s );
-}
-
+#endif

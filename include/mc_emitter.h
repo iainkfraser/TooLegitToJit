@@ -77,10 +77,7 @@ vreg_operand arch_const_to_operand( struct arch_emitter* me, int k );
 // TODO: this is emit LUA_MOVE
 void assign( struct arch_emitter* me, vreg_operand d, vreg_operand s );
 
-/*
-* Arch dependent generic instructions
-*/
 
-void arch_move( struct arch_emitter* me, operand d, operand s );
+#include "machine.h"
 
 #endif

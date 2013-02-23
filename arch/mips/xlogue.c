@@ -39,7 +39,7 @@ static void emit_copy_param( arch_emitter* me, int nr_locals,
 	if( dst.tag == OT_DIRECTADDR ){
 		operand src = OP_TARGETREG( dreg );
 		dst.offset -= stack_frame_size( nr_locals );
-		do_assign( me, dst, src );
+		arch_move( me, dst, src );
 	}
 }
 

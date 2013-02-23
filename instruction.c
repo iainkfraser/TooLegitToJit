@@ -28,47 +28,55 @@ void emit_ret( struct arch_emitter** mce ){
 
 
 void emit_loadk( struct arch_emitter** mce, int l, int k ){
-	do_assign( REF, llocal_to_operand( REF, l ).value, lconst_to_operand( REF, k ).value );
+	assign( REF, llocal_to_operand( REF, l ), lconst_to_operand( REF, k ) );
 }
 
 void emit_move( struct arch_emitter** mce, loperand d, loperand s ){
 	assert( d.islocal );	
-	do_assign( REF, loperand_to_operand( REF, d ).value, loperand_to_operand( REF,s ).value );
+	assign( REF, loperand_to_operand( REF, d ), loperand_to_operand( REF,s ) );
+}
+
+
+/*
+* Binary operators 
+*/
+
+
+typedef void (*arch_bop)( struct arch_emitter*, operand, operand, operand );
+
+static void emit_bop( struct arch_emitter* me, loperand d, loperand s, loperand t, arch_bop ab ){
+	vreg_operand od = loperand_to_operand( me, d ),
+			os = loperand_to_operand( me, s ),
+			ot = loperand_to_operand( me, t );
+
+	// TODO: verify there all numbers 
+
+	ab( me, od.value, os.value, ot.value );
 }
 
 void emit_add( struct arch_emitter** mce, loperand d, loperand s, loperand t ){
-	bop( REF, d, s, t, MOP_SPECIAL_ADDU, MOP_SPECIAL );
+	emit_bop( REF, d, s, t, &arch_add );
 }
 
 void emit_sub( struct arch_emitter** mce, loperand d, loperand s, loperand t ){
-	bop( REF, d, s, t, MOP_SPECIAL_SUBU, MOP_SPECIAL );
+	emit_bop( REF, d, s, t, &arch_sub );
 }
 
 void emit_mul( struct arch_emitter** mce, loperand d, loperand s, loperand t ){
-	bop( REF, d, s, t, MOP_SPECIAL2_MUL, MOP_SPECIAL2 );
-}
-
-static void do_div( struct arch_emitter **mce, loperand d, loperand s, loperand t, bool islow  ){
-	operand nil = OP_TARGETREG( _zero );	// dst is in hi and lo see instruction encoding
-	operand dst = loperand_to_operand( REF, d ).value;
-	do_bop( REF, nil, loperand_to_operand( REF, s ).value, loperand_to_operand( REF, t ).value,
-			 MOP_SPECIAL_DIV, MOP_SPECIAL );
-
-	// load the quotient into the dest
-	operand src = OP_TARGETREG( dst.tag == OT_REG ? dst.reg : TEMP_REG1 );
-	ENCODE_OP( REF, GEN_MIPS_OPCODE_3REG( MOP_SPECIAL, _zero, _zero, src.reg, islow ? MOP_SPECIAL_MFLO : MOP_SPECIAL_MFHI ) );
-
-	if( dst.tag != OT_REG )
-		do_assign( REF, dst, src );	
+	emit_bop( REF, d, s, t, &arch_mul );
 }
 
 void emit_div( struct arch_emitter** mce, loperand d, loperand s, loperand t ){
-	do_div( mce, d, s, t, true );
+	emit_bop( REF, d, s, t, &arch_div );
 }
 
 void emit_mod( struct arch_emitter** mce, loperand d, loperand s, loperand t ){
-	do_div( mce, d, s, t, false );
+	emit_bop( REF, d, s, t, &arch_mod );
 }
+
+/*
+* For loop 
+*/
 
 void emit_forprep( struct arch_emitter** mce, loperand init, int pc, int j ){
 	assert( init.islocal );
@@ -105,8 +113,9 @@ void emit_forloop( struct arch_emitter** mce, loperand loopvar, int pc, int j ){
 	//| nop 
 
 	operand dst = { .tag = OT_REG, { .reg = TEMP_REG1 } };
-	do_bop( REF, dst, loperand_to_operand( REF, loopvar ).value, 
-			loperand_to_operand( REF, limit ).value, MOP_SPECIAL_SUBU, MOP_SPECIAL );
+	arch_sub( REF, dst, loperand_to_operand( REF, loopvar ).value, loperand_to_operand( REF, limit ).value );	
+//	do_bop( REF, dst, loperand_to_operand( REF, loopvar ).value, 
+//			loperand_to_operand( REF, limit ).value, MOP_SPECIAL_SUBU, MOP_SPECIAL );
 
 	
 	ENCODE_OP( REF, GEN_MIPS_OPCODE_2REG( MOP_BGTZ, TEMP_REG1, 0, 3 ) );
@@ -123,10 +132,10 @@ void emit_forloop( struct arch_emitter** mce, loperand loopvar, int pc, int j ){
 void emit_newtable( struct arch_emitter** mce, loperand dst, int array, int hash ){
 	loadim( REF, _a0, array );
 	loadim( REF, _a1, hash );
-	call_fn( REF, (uintptr_t)&table_create, 0 );
+	arch_call_cfn( REF, (uintptr_t)&table_create, 0 );
 
 	operand src = OP_TARGETREG( _v0 ); 
-	do_assign( REF, loperand_to_operand( REF, dst ).value,  src );
+	arch_move( REF, loperand_to_operand( REF, dst ).value,  src );
 }
 
 void emit_setlist( struct arch_emitter** mce, loperand table, int n, int block ){
@@ -141,12 +150,12 @@ void emit_setlist( struct arch_emitter** mce, loperand table, int n, int block )
 
 		loperand lval = { .islocal = true, .index = table.index + i };	
 
-		do_assign( REF, dst, loperand_to_operand( REF, table ).value );
+		arch_move( REF, dst, loperand_to_operand( REF, table ).value );
 		loadim( REF, _a1, offset + i );
 		loadim( REF, _a2, 0 );	// TODO: type
-		do_assign( REF, val, loperand_to_operand( REF, lval ).value );
+		arch_move( REF, val, loperand_to_operand( REF, lval ).value );
 	
-		call_fn( REF, (uintptr_t)&table_set, 0 );	
+		arch_call_cfn( REF, (uintptr_t)&table_set, 0 );	
 
 	}
 
@@ -159,13 +168,13 @@ void emit_gettable( struct arch_emitter** mce, loperand dst, loperand table, lop
 	operand i = OP_TARGETREG( _a1 );
 	operand src = OP_TARGETREG( _v0 ); 
 
-	do_assign( REF, t, loperand_to_operand( REF, table ).value );
-	do_assign( REF, i, loperand_to_operand( REF, idx ).value );
+	arch_move( REF, t, loperand_to_operand( REF, table ).value );
+	arch_move( REF, i, loperand_to_operand( REF, idx ).value );
 	// TODO: type
 
-	call_fn( REF, (uintptr_t)&table_get, 0 );
+	arch_call_cfn( REF, (uintptr_t)&table_get, 0 );
 
-	do_assign( REF, loperand_to_operand( REF, dst ).value,  src );
+	arch_move( REF, loperand_to_operand( REF, dst ).value,  src );
 
 }
 
@@ -177,21 +186,21 @@ void emit_closure( struct arch_emitter** mce, loperand dst, struct proto* p ){
 
 	operand src = OP_TARGETREG( TEMP_REG1 ); 
 	loadim( REF, TEMP_REG1, (uintptr_t)p->code_start );
-	do_assign( REF, loperand_to_operand( REF, dst ).value, src );
+	arch_move( REF, loperand_to_operand( REF, dst ).value, src );
 }
 
 
 void emit_call( struct arch_emitter** mce, loperand closure, int nr_params, int nr_results ){
 	assert( closure.islocal );
 
-	struct struct arch_emitter* me = REF;
+	 struct arch_emitter* me = REF;
 
 	// store live registers 
 	store_frame( me );	
 
 	// load args
 	operand arg_clo = OP_TARGETREG( _a0 ); 
-	do_assign( REF, arg_clo, loperand_to_operand( REF, closure ).value );	
+	arch_move( REF, arg_clo, loperand_to_operand( REF, closure ).value );	
 
 #if 0	// this way requires the function to know the nr_locals in this frame
 	loadim( REF, _a1, (uintptr_t)closure.index );
