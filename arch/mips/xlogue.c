@@ -23,7 +23,7 @@ static int stack_frame_size( int nr_locals ){
 	return nr_locals * 8 + k;
 }
 
-static void emit_copy_param( mips_emitter* me, int nr_locals, 
+static void emit_copy_param( arch_emitter* me, int nr_locals, 
 			int paramidx, operand dst, int rbase, bool isvalue ){
 	assert( dst.tag == OT_REG || ( dst.tag == OT_DIRECTADDR && dst.base == _sp ) );
 	
@@ -43,7 +43,7 @@ static void emit_copy_param( mips_emitter* me, int nr_locals,
 	}
 }
 
-static void emit_nil_args( mips_emitter* me, int nr_params, int rstackval, int rstacktype, int ridx, int rn ){
+static void emit_nil_args( arch_emitter* me, int nr_params, int rstackval, int rstacktype, int ridx, int rn ){
 	int loopstart,loopend;
 
 	EMIT( MI_ADDIU( _AT, _zero, TNIL ) );		// load NIL into reg for later assign
@@ -70,9 +70,10 @@ static void emit_nil_args( mips_emitter* me, int nr_params, int rstackval, int r
 * a2 = number of arguments available
 * stack is still in the old stack frame  
 */
-static void emit_load_params( mips_emitter* me, int nr_locals, int nr_params ){
+static void emit_load_params( arch_emitter* me, int nr_locals, int nr_params ){
 	operand odst_value, odst_type, osrc_value, osrc_type;
-
+	vreg_operand dst;
+	
 	// registers used in operation - don't overwrite arguments and unspilled vregs.
 #if 0
 	const int reg_value = _v0;
@@ -95,19 +96,14 @@ static void emit_load_params( mips_emitter* me, int nr_locals, int nr_params ){
 #endif
 	
 	for( int i = 0; i < nr_params; i++ ){
-		odst_value = vreg_compiletime_reg_value( nr_locals, i );		
-		odst_type = vreg_compiletime_reg_type( nr_locals, i );
+		dst = arch_vreg_to_operand( arch_nr_locals( me ), i, false );
 
-		emit_copy_param( me, nr_locals, i + 1, odst_value, reg_value, true );
-#if 0
-		emit_copy_param( me, nr_locals, i + 1, odst_type, reg_type, false );
-#else
-		emit_copy_param( me, nr_locals, i + 1, odst_type, reg_value, false );
-#endif
+		emit_copy_param( me, nr_locals, i + 1, dst.value, reg_value, true );
+		emit_copy_param( me, nr_locals, i + 1, dst.type, reg_value, false );
 	}	
 }
 
-void emit_prologue( mips_emitter* me, int nr_locals, int nr_params ){
+void emit_prologue( arch_emitter* me, int nr_locals, int nr_params ){
 	// remember epilogue start
 	me->pro = GET_EC( me );
 
@@ -127,7 +123,7 @@ void emit_prologue( mips_emitter* me, int nr_locals, int nr_params ){
 	const_emit_loadreg( me );
 }
 
-void emit_epilogue( mips_emitter* me, int nr_locals ){
+void emit_epilogue( arch_emitter* me, int nr_locals ){
 	// remember epilogue start
 	me->epi = GET_EC( me );
 

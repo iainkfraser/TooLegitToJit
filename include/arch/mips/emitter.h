@@ -38,26 +38,8 @@ typedef struct constant {
 	};
 } constant;
 
-typedef struct operand {
-	enum { OT_REG, OT_DIRECTADDR, OT_IMMED } tag;	
-	struct {
-		struct {
-			int16_t		offset;
-			int 		base;
-		};
-		int		reg;
-		int		k;	// immediate constant
-	};
 
-	/*
-	* Bitfield info 
-	*/
-	bool bitfield;
-	
-
-} operand;
-
-typedef struct mips_emitter {
+typedef struct arch_emitter {
 	uint32_t*		mcode;		// machine code
 	uint32_t*		jt;		// jump table
 	size_t			nr_locals;	// number of virtual regs
@@ -69,9 +51,9 @@ typedef struct mips_emitter {
 	uint32_t		epi;		// epilogue machine code pointer
 	uint32_t		pro;		// prologue machine code pointer
 	struct list_head	head;		// linked list of branch ops that need to be linked. 
-} mips_emitter;
+} arch_emitter;
 
-void push_branch( mips_emitter* me, int line );
+void push_branch( arch_emitter* me, int line );
 
 #define DASM_M_GROW( t, p, sz, need) \
   do { \
@@ -111,20 +93,9 @@ void push_branch( mips_emitter* me, int line );
 #define OP_TARGETREG( r )		{ .tag = OT_REG, { .reg = ( r ) } }
 #define OP_TARGETDADDR( r, off ) 	{ .tag = OT_DIRECTADDR, { { .base = ( r ), .offset = ( off ) } } }
 
-/*
-* Util functions
-*/
 
-operand luaoperand_value_to_operand( struct mips_emitter* me, loperand op );
-operand luaoperand_type_to_operand( struct mips_emitter* me, loperand op );
-operand lualocal_value_to_operand( struct mips_emitter* me, int vreg );
-operand lualocal_type_to_operand( struct mips_emitter* me, int vreg );
-operand luak_value_to_operand( struct mips_emitter* me, int k );
-operand luak_type_to_operand( struct mips_emitter* me, int k );
-
-
-void load_bigim( struct mips_emitter* me, int reg, int k );
-void loadim( struct mips_emitter* me, int reg, int k );
-void do_assign( struct mips_emitter* me, operand d, operand s );
+void load_bigim( struct arch_emitter* me, int reg, int k );
+void loadim( struct arch_emitter* me, int reg, int k );
+void do_assign( struct arch_emitter* me, operand d, operand s );
 
 #endif

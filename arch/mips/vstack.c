@@ -14,52 +14,50 @@
 #include "arch/mips/emitter.h"
 #include "arch/mips/regmap.h"
 
+#define INVERSE( i, n )	( n - ( i + 1 ) )
+
+static operand pslot_to_operand( int nr_locals, int pidx, bool stackonly ){
+	if( stackonly || pidx >= NR_REGISTERS ){
+		operand r = OP_TARGETDADDR( _sp, 4 * INVERSE( pidx,  2 * nr_locals ) );
+		return r;
+	} else {
+		operand r = OP_TARGETREG( vreg_to_physical_reg( pidx ) );
+		return r;
+	}
+			
+} 
+
+vreg_operand arch_vreg_to_operand( int nr_locals, int vreg, bool stackonly ){
+	const int pidx = vreg * 2;
+	vreg_operand vo;
+	
+	vo.value = pslot_to_operand( nr_locals, pidx, stackonly );
+	vo.type = pslot_to_operand( nr_locals, pidx + 1, stackonly );
+
+	return vo;
+}
+
+/*
+* OLD CODE BELOW 
+*/
 
 /*
 * Compile-time virtual register mapping 
 */
 
-#define INVERSE( i, n )	( n - ( i + 1 ) )
 
-operand vreg_compiletime_stack_value( int nr_locals, int vreg ){
-	operand r = OP_TARGETDADDR( _sp, 8 * INVERSE( vreg, nr_locals ) );  	
-	return r;
-}
-
-operand vreg_compiletime_stack_type( int nr_locals, int vreg ){
-	operand r = OP_TARGETDADDR( _sp, 8 * INVERSE( vreg, nr_locals ) + 4 );  	
-	return r;
-}
 
 int nr_livereg_vreg_occupy( int nr_locals ){
 	return 2 * nr_locals;
 }
 
-static operand idx_physical_reg( int vreg ){
-	operand ret =  OP_TARGETREG( vreg_to_physical_reg( vreg ) );
-	return ret;
-}
-
-operand vreg_compiletime_reg_value( int nr_locals, int vreg ){
-	const int pidx = vreg * 2;
-	return pidx < NR_REGISTERS ?
-			idx_physical_reg( pidx ) :
-			vreg_compiletime_stack_value( nr_locals, vreg );
-}
-
-operand vreg_compiletime_reg_type( int nr_locals, int vreg ){
-	const int pidx = vreg * 2 + 1;	
-	return pidx < NR_REGISTERS ?
-			idx_physical_reg( pidx ) :
-			vreg_compiletime_stack_value( nr_locals, vreg );
-}
 
 /*
 * Runtime virtual register mapping. Stack functions will store the address in the 
 * out register.  
 */
 
-void vreg_runtime_reg_value( struct mips_emitter* me, int nr_locals, int ridx, int rout ){
+void vreg_runtime_reg_value( struct arch_emitter* me, int nr_locals, int ridx, int rout ){
 	assert( false );	
 }
 
@@ -68,7 +66,7 @@ void vreg_runtime_reg_type( int nr_locals, int vreg ){
 }
 
 
-void vreg_runtime_stack_value( struct mips_emitter* me, int nr_locals, int ridx, int rout ){
+void vreg_runtime_stack_value( struct arch_emitter* me, int nr_locals, int ridx, int rout ){
 	// i = i + 1	# start 1 position after calling position
 	// i << 3	# 8i
 	// -i		# -8i  
@@ -81,7 +79,7 @@ void vreg_runtime_stack_value( struct mips_emitter* me, int nr_locals, int ridx,
 	EMIT( MI_ADDU( rout, _sp, rout ) ); 
 }
 /*
-void vreg_runtime_stack_type( struct mips_emitter* me, int nr_locals, int ridx, int rout ){
+void vreg_runtime_stack_type( struct arch_emitter* me, int nr_locals, int ridx, int rout ){
 	EMIT( MI_ADDIU( rout, ridx, 1 ) );
 	EMIT( MI_SLL( rout, rout, 3 ) );
 	EMIT( MI_SUBU( rout, _zero, rout ) );
@@ -89,7 +87,7 @@ void vreg_runtime_stack_type( struct mips_emitter* me, int nr_locals, int ridx, 
 	EMIT( MI_ADDU( rout, _sp, rout ) ); 
 }*/
 
-void vreg_runtime_stack_value_load( struct mips_emitter* me, int rstack, int roff, int ioff, int rout ){
+void vreg_runtime_stack_value_load( struct arch_emitter* me, int rstack, int roff, int ioff, int rout ){
 	if( roff != _zero ){	 
 		EMIT( MI_ADDU( rout, rstack, roff ) );
 		rstack = rout;
@@ -99,7 +97,7 @@ void vreg_runtime_stack_value_load( struct mips_emitter* me, int rstack, int rof
 }
 
 // take stack offset 
-void vreg_runtime_stack_type_load( struct mips_emitter* me, int rstack, int roff, int ioff, int rout ){
+void vreg_runtime_stack_type_load( struct arch_emitter* me, int rstack, int roff, int ioff, int rout ){
 	if( roff != _zero ){	 
 		EMIT( MI_ADDU( rout, rstack, roff ) );
 		rstack = rout;
@@ -109,7 +107,7 @@ void vreg_runtime_stack_type_load( struct mips_emitter* me, int rstack, int roff
 }
 
 
-void vreg_runtime_stack_value_store( struct mips_emitter* me, int rstack, int roff, int ioff, int rvalue ){
+void vreg_runtime_stack_value_store( struct arch_emitter* me, int rstack, int roff, int ioff, int rvalue ){
 	int base = rstack;
 
 	if( roff != _zero ){	 
@@ -124,7 +122,7 @@ void vreg_runtime_stack_value_store( struct mips_emitter* me, int rstack, int ro
 
 }
 
-void vreg_runtime_stack_type_store( struct mips_emitter* me, int rstack, int roff, int ioff, int rvalue ){
+void vreg_runtime_stack_type_store( struct arch_emitter* me, int rstack, int roff, int ioff, int rvalue ){
 	int base = rstack;
 
 	if( roff != _zero ){	 
@@ -139,76 +137,3 @@ void vreg_runtime_stack_type_store( struct mips_emitter* me, int rstack, int rof
 }
 
 
-/*
-* Save and reload stack frames
-*/
-
-void x_frame( struct mips_emitter* me, bool isstore ){
-	operand st,sv,dt,dv;
-
-	for( int i =0; i < me->nr_locals; i++ ){
-
-		sv = vreg_compiletime_reg_value( me->nr_locals, i );
-		st = vreg_compiletime_reg_type( me->nr_locals, i );
-		dv = vreg_compiletime_stack_value( me->nr_locals, i );
-		dt = vreg_compiletime_stack_type( me->nr_locals, i );
-
-		if( !isstore ){
-			swap( sv, dv );
-			swap( st, dt );
-		}		
-
-		if( sv.tag == OT_REG )
-			do_assign( me, dv, sv );
-
-		if( st.tag == OT_REG )
-			do_assign( me, dt, st );
-
-	}
-}
-
-void store_frame( struct mips_emitter* me ){
-	x_frame( me, true );
-}
-
-void load_frame( struct mips_emitter* me ){
-	x_frame( me, false );
-	// TODO: reload the constants 
-}
-
-
-/*
-* Map Lua constants / locals to live position.
-*/
-
-extern operand const_to_operand( struct mips_emitter* me, int k );
-
-operand lualocal_value_to_operand( struct mips_emitter* me, int vreg ){
-	return vreg_compiletime_reg_value( me->nr_locals, vreg );
-}
-
-operand lualocal_type_to_operand( struct mips_emitter* me, int vreg ){
-	return vreg_compiletime_reg_type( me->nr_locals, vreg ); 
-}
-
-operand luak_value_to_operand( struct mips_emitter* me, int k ){
-	return const_to_operand( me, k );
-}
-
-
-operand luak_type_to_operand( struct mips_emitter* me, int k ){
-	assert( false );
-}
-
-operand luaoperand_value_to_operand( struct mips_emitter* me, loperand op ){
-	return op.islocal ? 
-		lualocal_value_to_operand( me, op.index ) :
-		luak_value_to_operand( me, op.index );
-}
-
-
-operand luaoperand_type_to_operand( struct mips_emitter* me, loperand op ){
-	return op.islocal ? 
-		lualocal_type_to_operand( me, op.index ) :
-		luak_type_to_operand( me, op.index );
-}

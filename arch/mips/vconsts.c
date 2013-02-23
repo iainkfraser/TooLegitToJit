@@ -13,8 +13,12 @@
 #include "arch/mips/regmap.h"
 #include "arch/mips/vstack.h"
 
-operand const_to_operand( struct mips_emitter* me, int k ){
+vreg_operand const_to_operand( struct arch_emitter* me, int k ){
+	vreg_operand ret;
 	operand r;
+
+	ret.type.tag = OT_IMMED;
+	ret.type.k = TNUMBER;	
 
 	constant* c = &me->consts[ k ];
 	if( c->isimmed ){
@@ -29,13 +33,18 @@ operand const_to_operand( struct mips_emitter* me, int k ){
 		r.reg = c->reg;
 	}
 
-	return r;
+	ret.value = r;
+	return ret;
+}
+
+vreg_operand arch_const_to_operand( struct arch_emitter* me, int k ){
+	return const_to_operand( me, k );
 }
 
 /*
 * Process non-immediate constants and store in data section if needbe.
 */ 
-void const_write_section( struct mips_emitter* me, int nr_locals ){
+void const_write_section( struct arch_emitter* me, int nr_locals ){
 	struct constant* c;
 
 	// spare physical registers 
@@ -68,7 +77,7 @@ void const_write_section( struct mips_emitter* me, int nr_locals ){
 /*
 * Load constants into registers.
 */
-void const_emit_loadreg( struct mips_emitter* me ){
+void const_emit_loadreg( struct arch_emitter* me ){
 	struct constant* c;
 
 	for( int i = 0; i < me->constsize; i++ ){
@@ -82,14 +91,14 @@ void const_emit_loadreg( struct mips_emitter* me ){
 }
 
 
-void mce_const_init( void** mce, size_t nr_constants ){
-	mips_emitter** me = ( mips_emitter**)mce;
+void mce_const_init( arch_emitter** mce, size_t nr_constants ){
+	arch_emitter** me = ( arch_emitter**)mce;
 	(*me)->consts = malloc( sizeof( struct constant ) * nr_constants );
 	(*me)->constsize = nr_constants;
 }
 
-void mce_const_int( void** mce, int kindex, int value ){
-	mips_emitter* me = *( mips_emitter**)mce;
+void mce_const_int( arch_emitter** mce, int kindex, int value ){
+	arch_emitter* me = *( arch_emitter**)mce;
 	
 	struct constant* c =  &me->consts[ kindex ];
 

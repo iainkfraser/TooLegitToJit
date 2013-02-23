@@ -15,11 +15,11 @@
 #include "arch/mips/vconsts.h"
 #include "lopcodes.h"
 
-void mce_init( void** mce, size_t vmlines ){
+void mce_init( arch_emitter** mce, size_t vmlines ){
 	const int jtsz = vmlines * 4;
 
-	mips_emitter** me = ( mips_emitter**)mce;
-	*me = malloc( sizeof( mips_emitter ) );
+	arch_emitter** me = ( arch_emitter**)mce;
+	*me = malloc( sizeof( arch_emitter ) );
 	(*me)->mcode = NULL;
 	(*me)->size = 0;
 	(*me)->bufsize = 0;
@@ -31,14 +31,14 @@ void mce_init( void** mce, size_t vmlines ){
 }
 
 
-void mce_proto_init( void** mce, size_t nr_protos ){
-	mips_emitter** me = ( mips_emitter**)mce;
+void mce_proto_init( arch_emitter** mce, size_t nr_protos ){
+	arch_emitter** me = ( arch_emitter**)mce;
 }
 
 
 /* begin prologue and init data section */
-void mce_start( void** mce , int nr_locals, int nr_params ){
-	mips_emitter* me = *( mips_emitter**)mce;
+void mce_start( arch_emitter** mce , int nr_locals, int nr_params ){
+	arch_emitter* me = *( arch_emitter**)mce;
 
 	me->nr_locals = nr_locals;
 
@@ -54,8 +54,8 @@ void mce_start( void** mce , int nr_locals, int nr_params ){
 
 
 
-size_t mce_link( void** mce ){
-	mips_emitter* me = *( mips_emitter**)mce;
+size_t mce_link( arch_emitter** mce ){
+	arch_emitter* me = *( arch_emitter**)mce;
 	struct list_head *seek,*next;
 	
 	list_for_each_safe( seek , next, &me->head ){
@@ -74,8 +74,8 @@ size_t mce_link( void** mce ){
 	return me->size;
 }
 
-void* mce_stop( void** mce, void* buf ){
-	mips_emitter* me = *( mips_emitter**)mce;
+void* mce_stop( arch_emitter** mce, void* buf ){
+	arch_emitter* me = *( arch_emitter**)mce;
 	memcpy( buf, me->mcode, me->size );
 	int jmp = me->pro * 4;
 
@@ -87,7 +87,7 @@ void* mce_stop( void** mce, void* buf ){
 }
 
 // call before emitting the branch
-void push_branch( mips_emitter* me, int line ){
+void push_branch( arch_emitter* me, int line ){
 	branch *b = malloc( sizeof( branch ) );
 	assert( b );
 	b->mline = me->size / 4;
@@ -97,12 +97,18 @@ void push_branch( mips_emitter* me, int line ){
 
 
 
-void label( unsigned int pc , void** mce  ){
-	mips_emitter* me = *( mips_emitter**)mce;
+void label( unsigned int pc , arch_emitter** mce  ){
+	arch_emitter* me = *( arch_emitter**)mce;
 	me->jt[ pc ] = me->size / 4; 	
 }
 
 
-void mce_proto_set( void** mce, int pindex, void* addr ){
+void mce_proto_set( arch_emitter** mce, int pindex, void* addr ){
 	
+}
+
+
+
+int arch_nr_locals( struct arch_emitter* mce ){
+	return mce->nr_locals;
 }

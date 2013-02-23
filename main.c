@@ -79,7 +79,7 @@ int validate_header( FILE* f ){
 ;
 
 /* load prototypes */
-int load_prototypes( FILE* f, struct proto* p, void** mce, struct code_alloc* ca ){
+int load_prototypes( FILE* f, struct proto* p, struct arch_emitter** mce, struct code_alloc* ca ){
 	int ret;
 	load_member( p, nrprotos, f );
 	mce_proto_init( mce, p->nrprotos );	
@@ -105,7 +105,7 @@ int load_prototypes( FILE* f, struct proto* p, void** mce, struct code_alloc* ca
 }
 
 /* load constants and generate function prologue */
-int load_constants( FILE* f, struct proto* p, void** mce ){
+int load_constants( FILE* f, struct proto* p, struct arch_emitter** mce ){
 	char t;
 	int k; 
 
@@ -178,7 +178,7 @@ int ignore_upvalues( FILE* f, struct proto* p ){
 int load_code( FILE* f, struct proto* p, struct code_alloc* ca ){
 	uint32_t ins;
 	int ret, seek, end;
-	void* mce;
+	struct arch_emitter* mce;
 
 	// prepare function machine code emitter
 	load_member( p, sizecode, f );
