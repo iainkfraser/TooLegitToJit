@@ -5,7 +5,7 @@
 #ifndef _FUNC_H_
 #define _FUNC_H_
 
-#include "mc_emitter.h"
+#include "instruction.h"
 
 struct closure;
 struct closure* closure_create( struct proto* addr, struct closure* c );

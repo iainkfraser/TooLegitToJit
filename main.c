@@ -17,6 +17,7 @@
 #include <stdlib.h>
 #include "lopcodes.h"
 #include "mc_emitter.h"
+#include "instruction.h"
 #include "user_memory.h"
 #include "list.h"
 #include "math_util.h"

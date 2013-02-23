@@ -4,6 +4,7 @@
 * Platfrom indepdent vm and physical machine operand mapping.
 */
 
+#include "instruction.h"
 #include "operand.h"
 
 
