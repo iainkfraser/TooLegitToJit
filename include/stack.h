@@ -9,7 +9,7 @@
 
 #include "mc_emitter.h"
 
-void store_frame( struct arch_emitter* me );
-void load_frame( struct arch_emitter* me );
+void store_frame( struct arch_emitter* me, struct frame* f );
+void load_frame( struct arch_emitter* me, struct frame* f );
 
 #endif 

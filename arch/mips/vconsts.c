@@ -13,6 +13,8 @@
 #include "arch/mips/regmap.h"
 #include "arch/mips/vstack.h"
 
+#if 0
+
 vreg_operand const_to_operand( struct arch_emitter* me, int k ){
 	vreg_operand ret;
 	operand r;
@@ -110,5 +112,5 @@ void mce_const_int( arch_emitter** mce, int kindex, int value ){
 		me->cregs++;
 }
 
-
+#endif 
 

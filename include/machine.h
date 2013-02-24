@@ -6,6 +6,15 @@
 #ifndef _MACHINE_H_
 #define _MACHINE_H_
 
+#include "operand.h"
+
+
+struct machine {
+	int sp;
+	int nr_reg;
+	int reg[];
+};
+
 void arch_move( struct arch_emitter* me, operand d, operand s );
 void arch_add( struct arch_emitter* me, operand d, operand s, operand t );
 void arch_sub( struct arch_emitter* me, operand d, operand s, operand t );

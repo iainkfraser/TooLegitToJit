@@ -16,6 +16,7 @@
 #include "arch/mips/vconsts.h"
 #include "arch/mips/xlogue.h"
 
+#if 0
 
 
 static int stack_frame_size( int nr_locals ){
@@ -141,4 +142,4 @@ void emit_epilogue( arch_emitter* me, int nr_locals ){
 	EMIT( MI_NOP() );
 }
 
-
+#endif 

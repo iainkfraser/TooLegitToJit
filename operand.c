@@ -8,20 +8,29 @@
 #include "operand.h"
 
 
-vreg_operand llocal_to_stack_operand( struct arch_emitter* me, int vreg ){
-	return arch_vreg_to_operand( arch_nr_locals( me ), vreg, true ); 
+vreg_operand llocal_to_stack_operand( struct frame* f, int vreg ){
+	return vreg_to_operand( f, vreg, true ); 
 }
 
-vreg_operand llocal_to_operand( struct arch_emitter* me, int vreg ){
-	return arch_vreg_to_operand( arch_nr_locals( me ), vreg, false ); 
+vreg_operand llocal_to_operand( struct frame* f, int vreg ){
+	return vreg_to_operand( f, vreg, false ); 
 }
 
-vreg_operand lconst_to_operand( struct arch_emitter* me, int k ){
-	return arch_const_to_operand( me, k );
+vreg_operand lconst_to_operand( struct frame* f, int k ){
+	return const_to_operand( f, k );
 }
 
-vreg_operand loperand_to_operand( struct arch_emitter* me, loperand op ){
+vreg_operand loperand_to_operand( struct frame* f, loperand op ){
 	return op.islocal ? 
-		llocal_to_operand( me, op.index ) :
-		lconst_to_operand( me, op.index );
+		llocal_to_operand( f, op.index ) :
+		lconst_to_operand( f, op.index );
 }
+
+
+loperand to_loperand( int rk ){
+	loperand r;
+	r.islocal = !ISK( rk );
+	r.index = r.islocal ? rk : INDEXK( rk );  
+	return r;
+} 
+

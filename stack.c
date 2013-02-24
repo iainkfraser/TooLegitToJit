@@ -4,22 +4,26 @@
 * Platform independent Lua stack manipulation and mapping functions.
 */
 
+#include <stdbool.h>
+#include <stdint.h>
 #include "math_util.h"
+#include "operand.h"
 #include "stack.h"
+#include "frame.h"
 
 /*
 * Save and reload stack frames
 */
 
-void x_frame( struct arch_emitter* me, bool isstore ){
+void x_frame( struct arch_emitter* me, struct frame* f, bool isstore ){
 //	operand st,sv,dt,dv;
 	vreg_operand s,d;
 	
-	const int nr_locals = arch_nr_locals( me );
+	const int nr_locals = f->nr_locals; 
 
 	for( int i =0; i < nr_locals; i++ ){
-		d = arch_vreg_to_operand( nr_locals, i, true );
-		s = arch_vreg_to_operand( nr_locals, i, false );
+		d = vreg_to_operand( f, i, true );
+		s = vreg_to_operand( f, i, false );
 
 		if( !isstore )
 			swap( d, s );
@@ -33,12 +37,12 @@ void x_frame( struct arch_emitter* me, bool isstore ){
 	}
 }
 
-void store_frame( struct arch_emitter* me ){
-	x_frame( me, true );
+void store_frame( struct arch_emitter* me, struct frame* f ){
+	x_frame( me, f, true );
 }
 
-void load_frame( struct arch_emitter* me ){
-	x_frame( me, false );
+void load_frame( struct arch_emitter* me, struct frame* f ){
+	x_frame( me, f, false );
 	// TODO: reload the constants 
 }
 

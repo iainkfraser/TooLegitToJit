@@ -9,7 +9,7 @@
 
 // TODO: platform indepdenent interface?
 
-
+#if 0
 
 int nr_livereg_vreg_occupy( int nr_locals );
 
@@ -31,6 +31,8 @@ void vreg_runtime_stack_type_store( struct arch_emitter* me, int rstack, int rof
 
 void store_frame( struct arch_emitter* me );
 void load_frame( struct arch_emitter* me );
+
+#endif 
 
 #endif
 

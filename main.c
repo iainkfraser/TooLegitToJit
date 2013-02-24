@@ -17,6 +17,7 @@
 #include <stdlib.h>
 #include "lopcodes.h"
 #include "mc_emitter.h"
+#include "frame.h"
 #include "instruction.h"
 #include "user_memory.h"
 #include "list.h"
@@ -37,7 +38,7 @@ struct code_alloc {
 #define do_fail( msg, ... ) 	do{ fprintf( stderr, "error: " msg "\n", ##  __VA_ARGS__ ); goto exit; }while(0)
 #define do_cfail( c, msg, ... )	do{ if( ( c ) ) do_fail( msg, ##  __VA_ARGS__ ); }while(0)
 
-int load_function( FILE* f, struct proto* p, struct code_alloc* ca );
+int load_function( FILE* f, struct proto* p, struct code_alloc* ca, struct machine* m );
 
 
 /* mark for precompiled code ('<esc>Lua') */
@@ -80,7 +81,7 @@ int validate_header( FILE* f ){
 ;
 
 /* load prototypes */
-int load_prototypes( FILE* f, struct proto* p, struct arch_emitter** mce, struct code_alloc* ca ){
+int load_prototypes( FILE* f, struct proto* p, struct arch_emitter** mce, struct code_alloc* ca, struct frame* fr ){
 	int ret;
 	load_member( p, nrprotos, f );
 	mce_proto_init( mce, p->nrprotos );	
@@ -95,30 +96,30 @@ int load_prototypes( FILE* f, struct proto* p, struct arch_emitter** mce, struct
 
 		struct proto* child = &p->subp[i];
 
-		if( ret = load_function( f, child, ca ) )
+		if( ret = load_function( f, child, ca, fr->m ) )
 			return ret;		// TODO: free memory 
 
 		printf("loaded sub prototype %d\n", i );
-		mce_proto_set( mce, i, child->code );
+	//	mce_proto_set( mce, i, child->code );
 	}
 
 	return 0;
 }
 
 /* load constants and generate function prologue */
-int load_constants( FILE* f, struct proto* p, struct arch_emitter** mce ){
+int load_constants( FILE* f, struct proto* p, struct arch_emitter** mce, struct frame* fr ){
 	char t;
 	int k; 
 
 	load_member( p, nrconstants, f );
-	mce_const_init( mce, p->nrconstants );	
+	init_consts( fr, p->nrconstants );
 
 	for( int i = 0; i < p->nrconstants; i++ ){
 		fread( &t, sizeof(char), 1, f );	
 		switch( t ){
 			case LUA_TNUMBER:
 				fread( &k, sizeof( int ), 1, f );	
-				mce_const_int( mce, i, k );
+				setk_number( fr, i, k );
 				break;	
 			default:
 				assert( 0 );
@@ -176,10 +177,11 @@ int ignore_upvalues( FILE* f, struct proto* p ){
 }
 
 
-int load_code( FILE* f, struct proto* p, struct code_alloc* ca ){
+int load_code( FILE* f, struct proto* p, struct code_alloc* ca, struct machine* m ){
 	uint32_t ins;
 	int ret, seek, end;
 	struct arch_emitter* mce;
+	struct frame fr = { .m = m, .nr_locals = p->maxstacksize, .nr_params = p->numparams };
 
 	// prepare function machine code emitter
 	load_member( p, sizecode, f );
@@ -189,12 +191,14 @@ int load_code( FILE* f, struct proto* p, struct code_alloc* ca ){
 	seek = ftell( f );
 	fseek( f, p->sizecode * 4, SEEK_CUR );
 
+	// need the # of constants to create the frame 
+
 	// load constants and come back to code
-	if( ret = load_constants( f, p, &mce ) )
+	if( ret = load_constants( f, p, &mce, &fr ) )
 		return ret;	
 	
 	// load prototypes
-	if( ret = load_prototypes( f, p, &mce, ca ) )
+	if( ret = load_prototypes( f, p, &mce, ca, &fr ) )
 		return ret;
 	
 	// rewind
@@ -202,7 +206,8 @@ int load_code( FILE* f, struct proto* p, struct code_alloc* ca ){
 	fseek( f, seek, SEEK_SET );
 
 	// start machine code generation
-	mce_start( &mce, p->maxstacksize, p->numparams  );
+	emit_header( mce, &fr );
+//	mce_start( &mce, p->maxstacksize, p->numparams  );
 	
 	// jit the code
 	for( unsigned int i = 0; i < p->sizecode; i++){
@@ -221,61 +226,61 @@ int load_code( FILE* f, struct proto* p, struct code_alloc* ca ){
 
 		switch( GET_OPCODE( ins ) ){
 			case OP_LOADK:	// R(A) = Kst( Bx ) 
-				emit_loadk( &mce, A,  GETARG_Bx( ins ) );
+				emit_loadk( &mce, &fr, A,  GETARG_Bx( ins ) );
 				break;
 			case OP_ADD:
-				emit_add( &mce, to_loperand( A ), 
+				emit_add( &mce, &fr, to_loperand( A ), 
 					to_loperand( GETARG_B( ins ) ), 
 					to_loperand( GETARG_C( ins ) ) );
 				break;
 			case OP_SUB:
-				emit_sub( &mce, to_loperand( A ), 
+				emit_sub( &mce, &fr, to_loperand( A ), 
 					to_loperand( GETARG_B( ins ) ), 
 					to_loperand( GETARG_C( ins ) ) );
 				break;
 			case OP_DIV:
-				emit_div( &mce, to_loperand( A ), 
+				emit_div( &mce, &fr, to_loperand( A ), 
 					to_loperand( GETARG_B( ins ) ), 
 					to_loperand( GETARG_C( ins ) ) );
 				break;
 			case OP_MUL:
-				emit_mul( &mce, to_loperand( A ), 
+				emit_mul( &mce, &fr, to_loperand( A ), 
 					to_loperand( GETARG_B( ins ) ), 
 					to_loperand( GETARG_C( ins ) ) );
 				break;
 			case OP_MOD:
-				emit_mod( &mce, to_loperand( A ), 
+				emit_mod( &mce, &fr, to_loperand( A ), 
 					to_loperand( GETARG_B( ins ) ), 
 					to_loperand( GETARG_C( ins ) ) );
 				break;
 			case OP_RETURN:
-				emit_ret( &mce );
+				emit_ret( &mce, &fr );
 				break;
 			case OP_MOVE:
-				emit_move( &mce, to_loperand( A ), 
+				emit_move( &mce, &fr, to_loperand( A ), 
 					to_loperand( GETARG_B( ins ) ) );
 				break;
 			case OP_FORPREP:
-				emit_forprep( &mce, to_loperand( A ), i, 
+				emit_forprep( &mce, &fr, to_loperand( A ), i, 
 						GETARG_sBx( ins ) );
 
 				break;
 			case OP_FORLOOP:
-				emit_forloop( &mce, to_loperand( A ), i, 
+				emit_forloop( &mce, &fr, to_loperand( A ), i, 
 						GETARG_sBx( ins ));
 				break;
 			case OP_NEWTABLE:
-				emit_newtable( &mce, to_loperand( A ), 
+				emit_newtable( &mce, &fr, to_loperand( A ), 
 						GETARG_B( ins ),
 						GETARG_C( ins ) );
 				break; 
 			case OP_SETLIST:
-				emit_setlist( &mce, to_loperand( A ),
+				emit_setlist( &mce, &fr, to_loperand( A ),
 						GETARG_B( ins ),
 						GETARG_C( ins ) );
 				break;
 			case OP_GETTABLE:
-				emit_gettable( &mce, to_loperand( A ),
+				emit_gettable( &mce, &fr, to_loperand( A ),
 					to_loperand( GETARG_B( ins ) ), 
 					to_loperand( GETARG_C( ins ) ) );
 				break;
@@ -287,11 +292,11 @@ int load_code( FILE* f, struct proto* p, struct code_alloc* ca ){
 				assert( idx < p->nrprotos );	// TODO: integrate into error code
  			
 				// TODO: deal with reference counting of subprototype 	
-				emit_closure( &mce, to_loperand( A ), &p->subp[ idx ] );
+				emit_closure( &mce, &fr, to_loperand( A ), &p->subp[ idx ] );
 			
 				}break;
 			case OP_CALL:
-				emit_call( &mce, to_loperand( A ), GETARG_B( ins ), 
+				emit_call( &mce, &fr, to_loperand( A ), GETARG_B( ins ), 
 						GETARG_C( ins )	);
 				break;
 			default:
@@ -301,6 +306,8 @@ int load_code( FILE* f, struct proto* p, struct code_alloc* ca ){
 
 	}
 
+	emit_footer( mce, &fr );
+	
 	p->sizemcode = mce_link( &mce );
 	p->code = ca->alloc( p->sizemcode );
 	if( !p->code )
@@ -316,7 +323,7 @@ int load_code( FILE* f, struct proto* p, struct code_alloc* ca ){
 }
 
 /* load function prototype */ 
-int load_function( FILE* f, struct proto* p, struct code_alloc* ca ){
+int load_function( FILE* f, struct proto* p, struct code_alloc* ca, struct machine* m ){
 	int ret;
 
 	assert( p );
@@ -328,7 +335,7 @@ int load_function( FILE* f, struct proto* p, struct code_alloc* ca ){
 	load_member( p, is_vararg, f );
 	load_member( p, maxstacksize, f );
 
-	if( ret = load_code( f, p, ca ) )
+	if( ret = load_code( f, p, ca, m ) )
 		return ret;
 
 	ignore_upvalues( f, p );
@@ -412,9 +419,15 @@ int main( int argc, char* argv[] ){
 		.execperm = &em_execperm
 	};
 
+	static struct machine m = {
+		29,
+		18,
+		{ 0, 1 , 2, 3 }
+	};
+
 	// init jit
 	do_cfail( validate_header( f ), "unacceptable header" );
-	do_cfail( load_function( f, &main, &ca ), "unable to load func" );
+	do_cfail( load_function( f, &main, &ca, &m ), "unable to load func" );
 
 	if( !disassem )
 		execute( &main );

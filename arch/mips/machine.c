@@ -13,12 +13,12 @@
 #include "arch/mips/emitter.h"
 #include "arch/mips/regmap.h"
 
-void load_bigim( struct arch_emitter* me, int reg, int k ){
+static void load_bigim( struct arch_emitter* me, int reg, int k ){
 	ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( MOP_LUI, 0, reg, ( k >> 16 ) & 0xffff ) );
 	ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( MOP_ORI, reg, reg, k & 0xffff ) );
 }
 
-void loadim( struct arch_emitter* me, int reg, int k ){
+static void loadim( struct arch_emitter* me, int reg, int k ){
 	if( k >= -32768 && k <= 65535 ){
 		if( k < 0 )
 			ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( MOP_ORI, _zero, reg, k ) );
@@ -117,5 +117,32 @@ void arch_pow( struct arch_emitter* me, operand d, operand s, operand t ){
 
 // TODO: take array of operands as argument
 void arch_call_cfn( struct arch_emitter* me, uintptr_t fn, size_t argsz ){
+#if 0
+	// first 10 virtual regs mapped to temps so save them 
+	int temps = min( 10, nr_livereg_vreg_occupy( me->nr_locals ) );
+	for( int i=0; i < temps; i++ ){
+		int treg = vreg_to_physical_reg( i );
+		ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( MOP_SW, _sp, treg, (int16_t)-( (i+1) * 4 ) ) );
+	}
+		
+	// need space for temps and function arguments	
+	int stackspace = 4 * ( max( argsz, 4 ) + temps );
+	
+	// create space for args - assume caller has setup a0 and a1
+	ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( MOP_ADDIU, _sp, _sp, (int16_t)( -stackspace ) ) );
 
+	// can assume loading into _v0 is safe because function may overwrite it 
+	loadim( me, _v0, fn );
+	ENCODE_OP( me, GEN_MIPS_OPCODE_3REG( MOP_SPECIAL, _v0, _zero, _ra, MOP_SPECIAL_JALR ) );
+	ENCODE_OP( me, MOP_NOP );	// TODO: one of the delay slots could be saved reg
+	
+	// restore the stack 	
+	ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( MOP_ADDIU, _sp, _sp, (int16_t)( stackspace ) ) );
+	
+	// reload temps
+	for( int i=0; i < temps; i++ ){
+		int treg = vreg_to_physical_reg( i );
+		ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( MOP_LW, _sp, treg, (int16_t)-( (i+1) * 4 ) ) );
+	}
+#endif 
 }

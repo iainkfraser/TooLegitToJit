@@ -44,7 +44,6 @@ void loadim( struct arch_emitter* me, int reg, int k ){
 		load_bigim( me, reg, k );
 	}
 }
-#endif
 
 static void call_fn( struct arch_emitter* me, uintptr_t fn, size_t argsz ){
 	// first 10 virtual regs mapped to temps so save them 
@@ -75,7 +74,6 @@ static void call_fn( struct arch_emitter* me, uintptr_t fn, size_t argsz ){
 	}
 }
 
-#if 0
 void do_assign( struct arch_emitter* me, operand d, operand s ){
 	assert( d.tag == OT_REG || d.tag == OT_DIRECTADDR );	
 

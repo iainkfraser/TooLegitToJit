@@ -93,9 +93,4 @@ void push_branch( arch_emitter* me, int line );
 #define OP_TARGETREG( r )		{ .tag = OT_REG, { .reg = ( r ) } }
 #define OP_TARGETDADDR( r, off ) 	{ .tag = OT_DIRECTADDR, { { .base = ( r ), .offset = ( off ) } } }
 
-
-void load_bigim( struct arch_emitter* me, int reg, int k );
-void loadim( struct arch_emitter* me, int reg, int k );
-void do_assign( struct arch_emitter* me, operand d, operand s );
-
 #endif

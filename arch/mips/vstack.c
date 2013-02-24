@@ -14,29 +14,6 @@
 #include "arch/mips/emitter.h"
 #include "arch/mips/regmap.h"
 
-#define INVERSE( i, n )	( n - ( i + 1 ) )
-
-static operand pslot_to_operand( int nr_locals, int pidx, bool stackonly ){
-	if( stackonly || pidx >= NR_REGISTERS ){
-		operand r = OP_TARGETDADDR( _sp, 4 * INVERSE( pidx,  2 * nr_locals ) );
-		return r;
-	} else {
-		operand r = OP_TARGETREG( vreg_to_physical_reg( pidx ) );
-		return r;
-	}
-			
-} 
-
-vreg_operand arch_vreg_to_operand( int nr_locals, int vreg, bool stackonly ){
-	const int pidx = vreg * 2;
-	vreg_operand vo;
-	
-	vo.value = pslot_to_operand( nr_locals, pidx, stackonly );
-	vo.type = pslot_to_operand( nr_locals, pidx + 1, stackonly );
-
-	return vo;
-}
-
 /*
 * OLD CODE BELOW 
 */
