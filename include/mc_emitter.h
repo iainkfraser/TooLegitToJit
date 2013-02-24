@@ -21,5 +21,6 @@ size_t mce_link( struct arch_emitter** mce );
 void* mce_stop( struct arch_emitter** mce, void* buf );
 void label( unsigned int pc , struct arch_emitter** Dst );
 
+size_t mce_ec( struct arch_emitter** mce );
 
 #endif
