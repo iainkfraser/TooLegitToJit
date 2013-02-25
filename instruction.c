@@ -94,13 +94,7 @@ void emit_forprep( struct emitter** mce, struct machine_ops* mop, struct frame* 
 	
 	pc = pc + 1;
 	emit_sub( mce, mop, f, init, init, step );
-	
-	/* branch loop */
-#if 0
-	push_branch( REF, pc + j );
-	ENCODE_OP( REF,	GEN_MIPS_OPCODE_2REG( MOP_BEQ, _zero, _zero, pc + j ) );
-	ENCODE_OP( REF, MOP_NOP );
-#endif
+	mop->b( REF, f->m, LBL_PC( pc + j ) ); 
 }
 
 void emit_forloop( struct emitter** mce, struct machine_ops* mop, struct frame* f, loperand loopvar, int pc, int j ){
@@ -112,32 +106,18 @@ void emit_forloop( struct emitter** mce, struct machine_ops* mop, struct frame* 
 
 	pc = pc + 1;
 
-	emit_add( mce, mop, f, loopvar, loopvar, step );
-	emit_move( mce, mop, f, iloopvar, loopvar );
-	
 	//| add a, a, a + ( 2 * 4 )
 	//| move a + ( 3 * 4 ), a 
 	//| sub v0, a, a + 4  
 	//| bgtz v0, 1 
 	//| jmp ( pc + j ) 
 	//| nop 
-
-#if 0
-	operand dst = { .tag = OT_REG, { .reg = TEMP_REG1 } };
-	mop->sub( REF, dst, loperand_to_operand( f, loopvar ).value, loperand_to_operand( f, limit ).value );	
-
-#endif
-//	do_bop( REF, dst, loperand_to_operand( f, loopvar ).value, 
-//			loperand_to_operand( f, limit ).value, MOP_SPECIAL_SUBU, MOP_SPECIAL );
-
-#if 0
-	ENCODE_OP( REF, GEN_MIPS_OPCODE_2REG( MOP_BGTZ, TEMP_REG1, 0, 3 ) );
-	ENCODE_OP( REF, MOP_NOP );
-	
-	push_branch( REF, pc + j );
-	ENCODE_OP( REF, GEN_MIPS_OPCODE_2REG( MOP_BEQ, _zero, _zero, pc + j ) );
-	ENCODE_OP( REF, MOP_NOP );
-#endif
+	// TODO: check for type on bgt 
+	emit_add( mce, mop, f, loopvar, loopvar, step );
+	emit_move( mce, mop, f, iloopvar, loopvar );
+	mop->bgt( REF, f->m, loperand_to_operand( f, loopvar ).value, loperand_to_operand( f, limit ).value, LBL_NEXT( 0 ) );
+	mop->b( REF, f->m, LBL_PC( pc + j ) );	
+	REF->ops->label_local( REF, 0 );
 }
 
 

@@ -162,7 +162,11 @@ void emitter32_create( struct emitter** e, size_t vmlines ){
 	assert( self->jt );		// TODO: error checking
 
 	memset( self->jt, 0, jtsz );
+
 	INIT_LIST_HEAD( &self->head );
+	for( int i = 0; i < NR_LOCAL_LABELS; i++ )
+		INIT_LIST_HEAD( &self->local[i] ); 
+
 }
 
 

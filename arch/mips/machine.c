@@ -61,6 +61,10 @@ static void move( struct emitter* me, struct machine* m, operand d, operand s ){
 		ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( MOP_SW, d.base, s.reg, d.offset ) );
 }
 
+/*
+* Binary arithmetic operators
+*/
+
 
 static void do_bop( struct emitter* me, struct machine* m, operand d, operand s, operand t, int op, int special ){
 	assert( d.tag == OT_REG || d.tag == OT_DIRECTADDR );
@@ -115,6 +119,35 @@ static void power( struct emitter* me, struct machine* m, operand d, operand s, 
 
 }
 
+/*
+* Branching 
+*/
+
+void b( struct emitter* me, struct machine* m, label l ){
+	;
+}
+
+static void beq( struct emitter* me, struct machine* m, operand d, operand s, label l ){
+	;
+}
+
+static void blt( struct emitter* me, struct machine* m, operand d, operand s, label l ){
+	;
+}
+
+static void bgt( struct emitter* me, struct machine* m, operand d, operand s, label l ){
+	;
+}
+
+static void ble( struct emitter* me, struct machine* m, operand d, operand s, label l ){
+	;
+}
+
+static void bge( struct emitter* me, struct machine* m, operand d, operand s, label l ){
+	;
+}
+
+
 // TODO: take array of operands as argument
 static void call_cfn( struct emitter* me, struct machine* m, uintptr_t fn, size_t argsz ){
 #if 0
@@ -156,6 +189,12 @@ struct machine_ops mips_ops = {
 	.div = divide,
 	.mod = mod,
 	.pow = power,
+	.b = b,
+	.beq = beq,
+	.blt = blt,
+	.bgt = bgt,
+	.ble = ble,
+	.bge = bge,
 	.call_cfn = call_cfn, 
 	.create_emitter = emitter32_create 
 };

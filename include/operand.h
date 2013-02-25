@@ -7,6 +7,8 @@
 #ifndef _OPERAND_H_
 #define _OPERAND_H_
 
+#include <stdint.h>
+
 /*
 * Lua operand
 */
@@ -47,7 +49,35 @@ typedef struct operand {
 #define OP_TARGETIMMED( v )		{ .tag = OT_IMMED, { .k = ( v ) } }
 
 /*
-* Generic machine Lua value 
+* Generic machine label
+*/
+
+typedef struct label {
+	bool islocal;
+	union {
+		uint32_t	vline;		// pc label line 
+		struct {			// local label id and direction (next/prev)
+			uint8_t		local; 
+			uint8_t		isnext;
+		};
+	};
+
+} label;
+
+
+#if 0
+#define LBL_PC( l )			{ .islocal = false, { .vline = (l) } }
+#define LBL_NEXT( l )			{ .islocal = true,  { { .local = (l), .isnext = true } } }
+#define LBL_PREV( l )			{ .islocal = true,  { { .local = (l), .isnext = false } } }
+#else
+static inline label LBL_PC( uint32_t line ){ label l = { .islocal = false, { .vline = line } }; return l; }
+static inline label LBL_NEXT( uint8_t local ){ label l = { .islocal = true }; l.local = local; l.isnext = true; return l; }
+static inline label LBL_PREV( uint8_t local ){ label l = { .islocal = true }; l.local = local; l.isnext = false; return l; }
+#endif
+
+
+/*
+* Generic machine Lua variable 
 */
 
 typedef union vreg_operand {

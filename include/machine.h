@@ -23,6 +23,13 @@ struct machine_ops {
 	void (*div)( struct emitter* me, struct machine* m, operand d, operand s, operand t );
 	void (*mod)( struct emitter* me, struct machine* m, operand d, operand s, operand t );
 	void (*pow)( struct emitter* me, struct machine* m, operand d, operand s, operand t );
+	void (*b)( struct emitter* me, struct machine* m, label l );
+	void (*beq)( struct emitter* me, struct machine* m, operand d, operand s, label l );
+	void (*blt)( struct emitter* me, struct machine* m, operand d, operand s, label l );
+	void (*bgt)( struct emitter* me, struct machine* m, operand d, operand s, label l );
+	void (*ble)( struct emitter* me, struct machine* m, operand d, operand s, label l );
+	void (*bge)( struct emitter* me, struct machine* m, operand d, operand s, label l );
+
 	void (*call_cfn)( struct emitter* me, struct machine* m, uintptr_t fn, size_t argsz );
 
 	// each machine has an associated emitter 
