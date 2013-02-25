@@ -15,7 +15,6 @@ typedef struct frame {
 	int 			nr_locals;
 	int			nr_params;
 	int 			nr_consts;
-	int			nr_temp_regs;  // first NR_TEMP_REGS registers are temps the rest are used for locals and consts
 
 	// frame emission counters
 	size_t			epi;	// epilogue location

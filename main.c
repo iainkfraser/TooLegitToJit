@@ -184,7 +184,7 @@ int load_code( FILE* f, struct proto* p, struct code_alloc* ca, struct machine* 
 	uint32_t ins;
 	int ret, seek, end;
 	struct emitter* mce;
-	struct frame fr = { .m = m, .nr_locals = p->maxstacksize, .nr_params = p->numparams, .nr_temp_regs = 4 };
+	struct frame fr = { .m = m, .nr_locals = p->maxstacksize, .nr_params = p->numparams };
 
 	// prepare function machine code emitter
 	load_member( p, sizecode, f );

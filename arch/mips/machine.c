@@ -11,7 +11,6 @@
 #include "emitter32.h"
 #include "arch/mips/regdef.h"
 #include "arch/mips/opcodes.h"
-#include "arch/mips/regmap.h"
 
 static void load_bigim( struct emitter* me, struct machine* m, int reg, int k ){
 	ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( MOP_LUI, 0, reg, ( k >> 16 ) & 0xffff ) );
@@ -54,7 +53,7 @@ static void loadreg( struct emitter* me, struct machine* m, operand* d, int temp
 static void move( struct emitter* me, struct machine* m, operand d, operand s ){
 	assert( d.tag == OT_REG || d.tag == OT_DIRECTADDR );	
 
-	int reg = d.tag == OT_REG ? d.reg : TEMP_REG1; 
+	int reg = d.tag == OT_REG ? d.reg : temp_reg( m, 0 ); 
 	loadreg( me, m, &s, reg, d.tag == OT_REG );
 
 	if( d.tag == OT_DIRECTADDR )		// | sw reg, d.addr 
@@ -69,12 +68,12 @@ static void move( struct emitter* me, struct machine* m, operand d, operand s ){
 static void do_bop( struct emitter* me, struct machine* m, operand d, operand s, operand t, int op, int special ){
 	assert( d.tag == OT_REG || d.tag == OT_DIRECTADDR );
 
-	loadreg( me, m, &s, TEMP_REG1, false );
-	loadreg( me, m, &t, TEMP_REG2, false );
+	loadreg( me, m, &s, temp_reg( m, 1 ), false );
+	loadreg( me, m, &t, temp_reg( m, 2 ), false );
 
 	assert( s.tag == OT_REG && t.tag == OT_REG );
 
-	int dreg = d.tag == OT_REG ? d.reg : TEMP_REG0;
+	int dreg = d.tag == OT_REG ? d.reg : temp_reg( m, 0 );
 	ENCODE_OP( me, GEN_MIPS_OPCODE_3REG( special, s.reg, t.reg, dreg, op ) );
 
 	if( d.tag == OT_DIRECTADDR )		// | sw reg, d.addr 
@@ -87,7 +86,7 @@ static void do_div( struct emitter *me, struct machine* m, operand d, operand s,
 	do_bop( me, m, nil, s, t, MOP_SPECIAL_DIV, MOP_SPECIAL );
 
 	// load the quotient into the dest
-	operand src = OP_TARGETREG( d.tag == OT_REG ? d.reg : TEMP_REG1 );
+	operand src = OP_TARGETREG( d.tag == OT_REG ? d.reg : temp_reg( m, 0 ) );
 	ENCODE_OP( me, GEN_MIPS_OPCODE_3REG( MOP_SPECIAL, _zero, _zero, src.reg, islow ? MOP_SPECIAL_MFLO : MOP_SPECIAL_MFHI ) );
 
 	if( d.tag != OT_REG )
@@ -233,6 +232,7 @@ struct machine_ops mips_ops = {
 struct machine mips_mach = {
 	.sp = _sp,
 	.nr_reg = 18 + 4,
+	.nr_temp_regs = 4,
 	.reg = {
 		_a0,_a1,_a2,_a3,
 		_s0,_s1,_s2,_s3,_s4,_s5,_s6,_s7,

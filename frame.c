@@ -47,13 +47,13 @@ void emit_footer( struct emitter* ae, struct frame* f ){
 */
 
 #define INVERSE( i, n )	( n - ( i + 1 ) )
-#define NR_SPARE_REGS( f )	( (f)->m->nr_reg - (f)->nr_temp_regs )
+#define NR_SPARE_REGS( f )	( (f)->m->nr_reg - (f)->m->nr_temp_regs )
 
 static int vreg_to_physical_reg( struct frame* f, int vreg ){
 	assert( f );
 	assert( f->m );
-	assert( vreg + f->nr_temp_regs < f->m->nr_reg );
-	return f->m->reg[ f->nr_temp_regs + vreg ];
+	assert( vreg + f->m->nr_temp_regs < f->m->nr_reg );
+	return f->m->reg[ f->m->nr_temp_regs + vreg ];
 }
 
 

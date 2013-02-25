@@ -6,12 +6,14 @@
 #ifndef _MACHINE_H_
 #define _MACHINE_H_
 
+#include <assert.h>	// TODO: remove once error checking in temp_reg
 #include "operand.h"
 #include "emitter.h"
 
 struct machine {
 	int sp;
 	int nr_reg;
+	int nr_temp_regs;  // first NR_TEMP_REGS registers are temps the rest are used for locals and consts
 	int reg[];
 };
 
@@ -37,7 +39,7 @@ struct machine_ops {
 };
 
 static inline int temp_reg( struct machine* m, int idx ){
-	// TODO: make sure there are enough temp regs ( SHOULD TEMP REGS be in machine not frame?? )
+	assert( idx < m->nr_temp_regs );		// TODO: error checking instead
 	return m->reg[ idx ]; 
 }
 
