@@ -31,6 +31,8 @@ struct machine_ops {
 	void (*bgt)( struct emitter* me, struct machine* m, operand d, operand s, label l );
 	void (*ble)( struct emitter* me, struct machine* m, operand d, operand s, label l );
 	void (*bge)( struct emitter* me, struct machine* m, operand d, operand s, label l );
+	void (*call)( struct emitter* me, struct machine* m, operand fn );
+	void (*ret)( struct emitter* me, struct machine* m );
 
 	void (*call_cfn)( struct emitter* me, struct machine* m, uintptr_t fn, size_t argsz );
 

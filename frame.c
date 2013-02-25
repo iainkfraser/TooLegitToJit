@@ -9,6 +9,7 @@
 #include <assert.h>
 #include "frame.h"
 #include "lopcodes.h"
+#include "xlogue.h"
 
 void init_consts( struct frame* f, int n ){
 	f->consts = malloc( sizeof( operand ) * n );
@@ -21,19 +22,23 @@ void setk_number( struct frame* f, int k, int value ) {
 }
 
 
-void emit_header( struct emitter* ae, struct frame* f ){
+void emit_header( struct machine_ops* mop, struct emitter* e, struct frame* f ){
 	// write data section for strings
 
 	// write epilogue and rem location
-//	f->epi = mce_ec( &ae );
+	f->epi = e->ops->ec( e );
+	epilogue( mop, e, f );
 
 	// write prologue and rem location
-//	f->pro = mce_ec( &ae );
+	f->pro = e->ops->ec( e );
+	prologue( mop, e, f );
 
 	// TODO: check for large immed that take 2 instructions and store some in register if available 
+	// load constants
+//	const_emit_loadreg( me );
 }
 
-void emit_footer( struct emitter* ae, struct frame* f ){
+void emit_footer( struct machine_ops* mop, struct emitter* e, struct frame* f ){
 	free( f->consts );
 }
 
@@ -89,3 +94,8 @@ vreg_operand const_to_operand( struct frame* f, int k ){
 	o.type = OP_TARGETIMMED( LUA_TNUMBER );
 	return o;
 }
+
+int code_start( struct frame* f ){
+	return f->pro; 
+}
+

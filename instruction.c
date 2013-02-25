@@ -31,7 +31,8 @@ void emit_ret( struct emitter** mce, struct machine_ops* mop, struct frame* f ){
 	int j = ( REF->epi - ( REF->size + 1 ) ) / 4;	// branch is from delay slot
 	ENCODE_OP( REF, GEN_MIPS_OPCODE_2REG( MOP_BEQ, _zero, _zero, (int16_t)j ) );
 	ENCODE_OP( REF, MOP_NOP );
-#endif 
+#endif
+ 	mop->b( REF, f->m, LBL_EC( f->epi ) ); 
 } 
 
 

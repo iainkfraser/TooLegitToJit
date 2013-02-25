@@ -209,7 +209,7 @@ int load_code( FILE* f, struct proto* p, struct code_alloc* ca, struct machine* 
 	fseek( f, seek, SEEK_SET );
 
 	// start machine code generation
-	emit_header( mce, &fr );
+	emit_header( mop, mce, &fr );
 //	mce_start( &mce, p->maxstacksize, p->numparams  );
 	
 	// jit the code
@@ -309,14 +309,14 @@ int load_code( FILE* f, struct proto* p, struct code_alloc* ca, struct machine* 
 
 	}
 
-	emit_footer( mce, &fr );
+	emit_footer( mop, mce, &fr );
 	
 	p->sizemcode = mce->ops->link( mce );
 	p->code = ca->alloc( p->sizemcode );
 	if( !p->code )
 		assert( 0 );	
 
-	p->code_start = mce->ops->stop( mce, p->code, 0 );
+	p->code_start = mce->ops->stop( mce, p->code, code_start( &fr ) );
 	if( ca->execperm )
 		ca->execperm( p->code, p->sizemcode );
 	
@@ -361,7 +361,7 @@ static void execute( struct proto* main ){
 
 	// temp method for getting result
 #if defined(__mips__)
-	asm("move %0, $t2" : "=r" ( x ) );
+	asm("move %0, $16" : "=r" ( x ) );
 #elif defined( __i386__ )
 	asm("movl %%ecx, %0" : "=r" ( x ) ); 
 #endif

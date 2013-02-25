@@ -27,13 +27,15 @@ typedef struct frame {
 //#define 
 
 
+int code_start( struct frame* f );
+
 // set constants
 void init_consts( struct frame* f, int n );
 void setk_number( struct frame* f, int k, int value );
 
 // function emission ( includes prologue, epilogue, constant loading and data section )
-void emit_header( struct emitter* ae, struct frame* f );	// only call after all consts have been set
-void emit_footer( struct emitter* ae, struct frame* f );	
+void emit_header( struct machine_ops* mop, struct emitter* e, struct frame* f );	// only call after all consts have been set
+void emit_footer( struct machine_ops* mop, struct emitter* e, struct frame* f );	
 
 // mapping
 vreg_operand vreg_to_operand( struct frame* f, int vreg, bool stackonly );

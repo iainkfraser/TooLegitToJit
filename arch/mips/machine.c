@@ -12,6 +12,12 @@
 #include "arch/mips/regdef.h"
 #include "arch/mips/opcodes.h"
 
+// use the sp variable in machine struct 
+#ifdef sp
+#undef sp
+#endif
+
+
 static void load_bigim( struct emitter* me, struct machine* m, int reg, int k ){
 	ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( MOP_LUI, 0, reg, ( k >> 16 ) & 0xffff ) );
 	ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( MOP_ORI, reg, reg, k & 0xffff ) );
@@ -19,7 +25,7 @@ static void load_bigim( struct emitter* me, struct machine* m, int reg, int k ){
 
 static void loadim( struct emitter* me, struct machine* m, int reg, int k ){
 	if( k >= -32768 && k <= 65535 ){
-		if( k < 0 )
+		if( k >= 0 )
 			ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( MOP_ORI, _zero, reg, k ) );
 		else
 			ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( MOP_ADDIU, _zero, reg, k ) );
@@ -122,24 +128,30 @@ static void power( struct emitter* me, struct machine* m, operand d, operand s, 
 * Branching 
 */
 
-static void branch( struct emitter* me, label l ){
-	if( l.islocal )
-		me->ops->branch_local( me, l.local, l.isnext );
-	else
-		me->ops->branch_pc( me, l.vline );
+static int branch( struct emitter* me, label l ){
+	switch( l.tag ){
+		case LABEL_LOCAL:
+			me->ops->branch_local( me, l.local, l.isnext );
+			break;
+		case LABEL_PC:
+			me->ops->branch_pc( me, l.vline );
+			break;
+		case LABEL_EC:
+			return l.ec - ( me->ops->ec( me ) + 1 ); 		
+	}
+
+	return 0;
 }
 
 void b( struct emitter* me, struct machine* m, label l ){
-	branch( me, l );
-	EMIT( MI_B( 0 ) );
+	EMIT( MI_B( branch( me, l ) ) );
 	EMIT( MI_NOP() );
 }
 
 static void beq( struct emitter* me, struct machine* m, operand d, operand s, label l ){
 	loadreg( me, m, &d, temp_reg( m, 0 ), false );
 	loadreg( me, m, &s, temp_reg( m, 1 ), false );
-	branch( me, l );
-	EMIT( MI_BEQ( d.reg, s.reg, 0 ) );
+	EMIT( MI_BEQ( d.reg, s.reg, branch( me, l ) ) );
 	EMIT( MI_NOP( ) );
 }
 
@@ -153,8 +165,7 @@ static void bgt( struct emitter* me, struct machine* m, operand d, operand s, la
 
 	sub( me, m, otemp, d, s );
 	
-	branch( me, l );
-	EMIT( MI_BGTZ( rtemp, 0 ) );
+	EMIT( MI_BGTZ( rtemp, branch( me, l ) ) );
 	EMIT( MI_NOP( ) );
 }
 
@@ -168,9 +179,21 @@ static void bge( struct emitter* me, struct machine* m, operand d, operand s, la
 
 	sub( me, m, otemp, d, s );
 	
-	branch( me, l );
-	EMIT( MI_BGEZ( rtemp, 0 ) );
+	EMIT( MI_BGEZ( rtemp, branch( me, l ) ) );
 	EMIT( MI_NOP( ) );
+}
+
+
+static void call( struct emitter* me, struct machine* m, operand fn ){
+	loadreg( me, m, &fn, temp_reg( m, 0 ), false );
+	EMIT( MI_ADDIU( m->sp, m->sp, -4 ) );
+	EMIT( MI_JALR( fn.reg ) );
+	EMIT( MI_SW( _ra, m->sp, 0 ) );		// delay slot dummy
+	EMIT( MI_ADDIU( m->sp, m->sp, 4 ) );
+}
+
+static void ret( struct emitter* me, struct machine* m ){
+	EMIT( MI_JR( _ra ) );
 }
 
 
@@ -221,13 +244,12 @@ struct machine_ops mips_ops = {
 	.bgt = bgt,
 	.ble = ble,
 	.bge = bge,
+	.call = call,
+	.ret = ret,
 	.call_cfn = call_cfn, 
 	.create_emitter = emitter32_create 
 };
 
-#ifdef sp
-#undef sp
-#endif
 
 struct machine mips_mach = {
 	.sp = _sp,

@@ -69,13 +69,15 @@ static inline operand OP_TARGETIMMED( int k ){
 */
 
 typedef struct label {
-	bool islocal;
+	enum{ LABEL_PC, LABEL_LOCAL, LABEL_EC } tag;
+
 	union {
 		uint32_t	vline;		// pc label line 
 		struct {			// local label id and direction (next/prev)
 			uint8_t		local; 
 			uint8_t		isnext;
 		};
+		uint32_t	ec;		// code emission line
 	};
 
 } label;
@@ -86,9 +88,10 @@ typedef struct label {
 #define LBL_NEXT( l )			{ .islocal = true,  { { .local = (l), .isnext = true } } }
 #define LBL_PREV( l )			{ .islocal = true,  { { .local = (l), .isnext = false } } }
 #else
-static inline label LBL_PC( uint32_t line ){ label l = { .islocal = false, { .vline = line } }; return l; }
-static inline label LBL_NEXT( uint8_t local ){ label l = { .islocal = true }; l.local = local; l.isnext = true; return l; }
-static inline label LBL_PREV( uint8_t local ){ label l = { .islocal = true }; l.local = local; l.isnext = false; return l; }
+static inline label LBL_PC( uint32_t line ){ label l = { .tag = LABEL_PC, { .vline = line } }; return l; }
+static inline label LBL_NEXT( uint8_t local ){ label l = { .tag = LABEL_LOCAL }; l.local = local; l.isnext = true; return l; }
+static inline label LBL_PREV( uint8_t local ){ label l = { .tag = LABEL_LOCAL }; l.local = local; l.isnext = false; return l; }
+static inline label LBL_EC( unsigned int ec ){ label l = { .tag = LABEL_EC }; l.ec = ec; return l; }
 #endif
 
 
