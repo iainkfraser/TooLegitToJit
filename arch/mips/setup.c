@@ -15,6 +15,8 @@
 #include "arch/mips/vconsts.h"
 #include "lopcodes.h"
 
+static uint32_t find_local_label( int pc, int local, struct arch_emitter* me, bool isnext );
+
 void mce_init( arch_emitter** mce, size_t vmlines ){
 	const int jtsz = vmlines * 4;
 
@@ -30,42 +32,25 @@ void mce_init( arch_emitter** mce, size_t vmlines ){
 	INIT_LIST_HEAD( &(*me)->head );
 }
 
-
-void mce_proto_init( arch_emitter** mce, size_t nr_protos ){
-	arch_emitter** me = ( arch_emitter**)mce;
-}
-
-
-/* begin prologue and init data section */
-void mce_start( arch_emitter** mce , int nr_locals, int nr_params ){
-	arch_emitter* me = *( arch_emitter**)mce;
-
-	me->nr_locals = nr_locals;
-
-	// write datasection first
-//	const_write_section( me, nr_locals );
-	
-	// write epilogue - remember so we can reuse it 
-	emit_epilogue( me, nr_locals );
-
-	// finaly the prologue 
-	emit_prologue( me, nr_locals, nr_params );
-}
-
-
-
 size_t mce_link( arch_emitter** mce ){
 	arch_emitter* me = *( arch_emitter**)mce;
 	struct list_head *seek,*next;
-	
+	uint32_t value;
+	int16_t offset;
+
 	list_for_each_safe( seek , next, &me->head ){
 		branch* b = list_entry( seek, branch, link );	
-			
-		// subtract 1 because of the delay slot
-		int16_t offset = (int16_t)( me->jt[ b->vline ] - b->mline ) - 1;  
+		
+		if( b->islocal )
+			offset = find_local_label( b->mline, b->local, me, b->isnext );
+		else	
+			offset = (int16_t)( me->jt[ b->vline ] - b->mline ) - 1;  
+	
+		// calculate new value
+		value = ( me->mcode[ b->mline ] & ~0xffff ) | ( offset & 0xffff );
 	
 		// overwrite immediate operand	
-		me->mcode[ b->mline ] = ( me->mcode[ b->mline ] & ~0xffff ) | ( offset & 0xffff );
+		me->mcode[ b->mline ] = value;
 
 		// remove ll node 
 		list_del( seek ); 
@@ -89,26 +74,63 @@ void* mce_stop( arch_emitter** mce, void* buf ){
 // call before emitting the branch
 void push_branch( arch_emitter* me, int line ){
 	branch *b = malloc( sizeof( branch ) );
-	assert( b );
+	assert( b );			// TODO: error handling 
 	b->mline = me->size / 4;
 	b->vline = line;	
+	b->islocal = false;
 	list_add_tail( &b->link, &me->head );
 }
 
-
+void push_branch_local( arch_emitter* me, int local, bool isnext ){
+	branch *b = malloc( sizeof( branch ) );
+	assert( b );			// TODO: error handling 
+	b->mline = me->size / 4;
+	b->local = local;
+	b->isnext = isnext;	
+	b->islocal = true;
+	list_add_tail( &b->link, &me->head );
+}
 
 void label( unsigned int pc , arch_emitter** mce  ){
 	arch_emitter* me = *( arch_emitter**)mce;
 	me->jt[ pc ] = me->size / 4; 	
 }
 
+static uint32_t find_local_label( int pc, int local, struct arch_emitter* me, bool isnext ){
+	struct list_head* seek;
+	list_for_each( seek , &me->local[ local ] ){
+		local_label* sll = list_entry( seek, local_label, link );	
+		
+		if( pc >= sll->pc && !isnext )
+			return sll->pc;
 
-void mce_proto_set( arch_emitter** mce, int pindex, void* addr ){
+		if( pc <= sll->pc && isnext  )
+			return sll->pc;
 	
+	}
+
+	assert( false );
+
 }
 
+void label_local( int local, struct arch_emitter** mce ){
+	assert( 0 <= local && local < NR_LOCAL_LABELS );
+	arch_emitter* me = *( arch_emitter**)mce;
+	
+	struct list_head* seek;
+	const uint32_t pc = mce_ec( mce );
 
+	struct local_label* ll = malloc( sizeof( struct local_label ) );
+	assert( ll );			// TODO: error handling 
 
-int arch_nr_locals( struct arch_emitter* mce ){
-	return mce->nr_locals;
+	// insert in order
+	list_for_each( seek , &me->local[ local ] ){
+		local_label* sll = list_entry( seek, local_label, link );	
+		if( pc < sll->pc )
+			goto insert;
+	
+	}
+
+insert:
+	list_add_tail( &ll->link, &me->local[ local ]);
 }

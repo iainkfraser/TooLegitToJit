@@ -15,10 +15,22 @@ enum tag { TNUMBER = 0, TGARBAGE = 1, TNIL = 2, TUSER = 3, TNAT = 4 };	// NAT = 
 #define NR_TAG_BITS	2	// number of bits needed to encode tag
 
 
+typedef struct local_label {
+	uint32_t		pc;
+	struct list_head	link;
+} local_label;
+
 typedef struct branch {
 	uint32_t*		mcode;		// machine code instruction
 	uint32_t		mline;		// machine code line
-	uint32_t		vline;		// index into jump table i.e. vm line
+	bool			islocal;
+	union {
+		uint32_t	vline;		// index into jump table i.e. vm line
+		struct {			// jump to local
+			uint8_t		local; 
+			uint8_t		isnext;
+		};
+	};
 	struct list_head	link;
 } branch;
 
@@ -51,6 +63,7 @@ typedef struct arch_emitter {
 	uint32_t		epi;		// epilogue machine code pointer
 	uint32_t		pro;		// prologue machine code pointer
 	struct list_head	head;		// linked list of branch ops that need to be linked. 
+	struct list_head	local[NR_LOCAL_LABELS];	// local labels 
 } arch_emitter;
 
 void push_branch( arch_emitter* me, int line );

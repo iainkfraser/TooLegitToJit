@@ -3,18 +3,18 @@
 * Sythentic generic machine instructions.
 */
 
-#include "mc_emitter.h"
+#include "emitter.h"
 #include "machine.h"
 
-void assign( struct arch_emitter* me, vreg_operand d, vreg_operand s ){
-	arch_move( me, d.value, s.value );
-	arch_move( me, d.type, s.type );
+void assign( struct machine_ops* mop, struct emitter* e, struct machine* m, vreg_operand d, vreg_operand s ) {
+	mop->move( e, d.value, s.value );
+	mop->move( e, d.type, s.type );
 }
 
 
-void loadim( struct arch_emitter* me, int reg, int value ){
+void loadim( struct machine_ops* mop, struct emitter* e, struct machine* m, int reg, int value ) {
 	operand r = OP_TARGETREG( reg );
 	operand v = OP_TARGETIMMED( value );
-	arch_move( me, r, v );
+	mop->move( e, r, v );
 }
 

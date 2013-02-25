@@ -7,7 +7,7 @@
 #define _MACHINE_H_
 
 #include "operand.h"
-
+#include "emitter.h"
 
 struct machine {
 	int sp;
@@ -15,16 +15,19 @@ struct machine {
 	int reg[];
 };
 
-void arch_move( struct arch_emitter* me, operand d, operand s );
-void arch_add( struct arch_emitter* me, operand d, operand s, operand t );
-void arch_sub( struct arch_emitter* me, operand d, operand s, operand t );
-void arch_mul( struct arch_emitter* me, operand d, operand s, operand t );
-void arch_div( struct arch_emitter* me, operand d, operand s, operand t );
-void arch_mod( struct arch_emitter* me, operand d, operand s, operand t );
-void arch_pow( struct arch_emitter* me, operand d, operand s, operand t );
+struct machine_ops {
+	void (*move)( struct emitter* me, operand d, operand s );
+	void (*add)( struct emitter* me, operand d, operand s, operand t );
+	void (*sub)( struct emitter* me, operand d, operand s, operand t );
+	void (*mul)( struct emitter* me, operand d, operand s, operand t );
+	void (*div)( struct emitter* me, operand d, operand s, operand t );
+	void (*mod)( struct emitter* me, operand d, operand s, operand t );
+	void (*pow)( struct emitter* me, operand d, operand s, operand t );
+	void (*call_cfn)( struct emitter* me, uintptr_t fn, size_t argsz );
 
-
-void arch_call_cfn( struct arch_emitter* me, uintptr_t fn, size_t argsz );
+	// each machine has an associated emitter 
+	void (*create_emitter)( struct emitter** e, size_t vmlines );
+};
 
 #endif 
 

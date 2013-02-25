@@ -7,8 +7,8 @@
 #ifndef _FRAME_H_
 #define _FRAME_H_
 
-#include "mc_emitter.h"
 #include "machine.h"
+#include "emitter.h"
 
 typedef struct frame {
 	struct machine*		m;	
@@ -33,8 +33,8 @@ void init_consts( struct frame* f, int n );
 void setk_number( struct frame* f, int k, int value );
 
 // function emission ( includes prologue, epilogue, constant loading and data section )
-void emit_header( struct arch_emitter* ae, struct frame* f );	// only call after all consts have been set
-void emit_footer( struct arch_emitter* ae, struct frame* f );	
+void emit_header( struct emitter* ae, struct frame* f );	// only call after all consts have been set
+void emit_footer( struct emitter* ae, struct frame* f );	
 
 // mapping
 vreg_operand vreg_to_operand( struct frame* f, int vreg, bool stackonly );

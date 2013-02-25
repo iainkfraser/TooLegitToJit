@@ -7,9 +7,9 @@
 #ifndef _STACK_H_
 #define _STACK_H_
 
-#include "mc_emitter.h"
+#include "emitter.h"
 
-void store_frame( struct arch_emitter* me, struct frame* f );
-void load_frame( struct arch_emitter* me, struct frame* f );
+void store_frame( struct emitter* me, struct frame* f );
+void load_frame( struct emitter* me, struct frame* f );
 
 #endif 

@@ -4,6 +4,7 @@
 * Platform independent function/frame manipulation code.
 */
 
+#include <stdbool.h>
 #include <stdlib.h>
 #include <assert.h>
 #include "frame.h"
@@ -19,19 +20,19 @@ void setk_number( struct frame* f, int k, int value ) {
 }
 
 
-void emit_header( struct arch_emitter* ae, struct frame* f ){
+void emit_header( struct emitter* ae, struct frame* f ){
 	// write data section for strings
 
 	// write epilogue and rem location
-	f->epi = mce_ec( &ae );
+//	f->epi = mce_ec( &ae );
 
 	// write prologue and rem location
-	f->pro = mce_ec( &ae );
+//	f->pro = mce_ec( &ae );
 
 	// TODO: check for large immed that take 2 instructions and store some in register if available 
 }
 
-void emit_footer( struct arch_emitter* ae, struct frame* f ){
+void emit_footer( struct emitter* ae, struct frame* f ){
 	free( f->consts );
 }
 
