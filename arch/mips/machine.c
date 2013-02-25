@@ -123,12 +123,25 @@ static void power( struct emitter* me, struct machine* m, operand d, operand s, 
 * Branching 
 */
 
+static void branch( struct emitter* me, label l ){
+	if( l.islocal )
+		me->ops->branch_local( me, l.local, l.isnext );
+	else
+		me->ops->branch_pc( me, l.vline );
+}
+
 void b( struct emitter* me, struct machine* m, label l ){
-	;
+	branch( me, l );
+	EMIT( MI_B( 0 ) );
+	EMIT( MI_NOP() );
 }
 
 static void beq( struct emitter* me, struct machine* m, operand d, operand s, label l ){
-	;
+	loadreg( me, m, &d, temp_reg( m, 0 ), false );
+	loadreg( me, m, &s, temp_reg( m, 1 ), false );
+	branch( me, l );
+	EMIT( MI_BEQ( d.reg, s.reg, 0 ) );
+	EMIT( MI_NOP( ) );
 }
 
 static void blt( struct emitter* me, struct machine* m, operand d, operand s, label l ){
@@ -136,7 +149,14 @@ static void blt( struct emitter* me, struct machine* m, operand d, operand s, la
 }
 
 static void bgt( struct emitter* me, struct machine* m, operand d, operand s, label l ){
-	;
+	int rtemp = temp_reg( m, 0 );
+	operand otemp = OP_TARGETREG( rtemp );
+
+	sub( me, m, otemp, d, s );
+	
+	branch( me, l );
+	EMIT( MI_BGTZ( rtemp, 0 ) );
+	EMIT( MI_NOP( ) );
 }
 
 static void ble( struct emitter* me, struct machine* m, operand d, operand s, label l ){
@@ -144,7 +164,14 @@ static void ble( struct emitter* me, struct machine* m, operand d, operand s, la
 }
 
 static void bge( struct emitter* me, struct machine* m, operand d, operand s, label l ){
-	;
+	int rtemp = temp_reg( m, 0 );
+	operand otemp = OP_TARGETREG( rtemp );
+
+	sub( me, m, otemp, d, s );
+	
+	branch( me, l );
+	EMIT( MI_BGEZ( rtemp, 0 ) );
+	EMIT( MI_NOP( ) );
 }
 
 
@@ -197,5 +224,19 @@ struct machine_ops mips_ops = {
 	.bge = bge,
 	.call_cfn = call_cfn, 
 	.create_emitter = emitter32_create 
+};
+
+#ifdef sp
+#undef sp
+#endif
+
+struct machine mips_mach = {
+	.sp = _sp,
+	.nr_reg = 18 + 4,
+	.reg = {
+		_a0,_a1,_a2,_a3,
+		_s0,_s1,_s2,_s3,_s4,_s5,_s6,_s7,
+		_t0,_t1,_t2,_t3,_t4,_t6,_t6,_t7,_t8,_t9
+	}
 };
 

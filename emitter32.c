@@ -53,7 +53,7 @@ static size_t link( struct emitter* e ){
 		branch* b = list_entry( seek, branch, link );	
 		
 		if( b->islocal )
-			offset = find_local_label( SELF, b->mline, b->local, b->isnext );
+			offset = (int16_t)( find_local_label( SELF, b->mline, b->local, b->isnext ) - b->mline ) - 1;
 		else	
 			offset = (int16_t)( SELF->jt[ b->vline ] - b->mline ) - 1;  
 	
@@ -92,15 +92,14 @@ static void label_local( struct emitter* e, unsigned int local ){
 	assert( 0 <= local && local < NR_LOCAL_LABELS );
 	
 	struct list_head* seek;
-	const uint32_t pc = e->ops->ec( e );
-
 	struct local_label* ll = malloc( sizeof( struct local_label ) );
 	assert( ll );			// TODO: error handling 
+	ll->pc = e->ops->ec( e );
 
 	// insert in order
 	list_for_each( seek , &SELF->local[ local ] ){
 		local_label* sll = list_entry( seek, local_label, link );	
-		if( pc < sll->pc )
+		if( ll->pc < sll->pc )
 			goto insert;
 	
 	}

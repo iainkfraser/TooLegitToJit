@@ -44,9 +44,25 @@ typedef struct operand {
 
 } operand;		// hmm good idea, could be platform opaque
 
+#if 0
 #define OP_TARGETREG( r )		{ .tag = OT_REG, { .reg = ( r ) } }
 #define OP_TARGETDADDR( r, off ) 	{ .tag = OT_DIRECTADDR, { { .base = ( r ), .offset = ( off ) } } }
 #define OP_TARGETIMMED( v )		{ .tag = OT_IMMED, { .k = ( v ) } }
+#else
+static inline operand OP_TARGETREG( int r ){ 
+	operand o = { .tag = OT_REG, { .reg = ( r ) } }; return o; 
+}
+
+static inline operand OP_TARGETDADDR( int b, int off ){
+	operand o = { .tag = OT_DIRECTADDR, { { .base = ( b ), .offset = ( off ) } } };
+	return o;
+}
+
+static inline operand OP_TARGETIMMED( int k ){
+	operand o = { .tag = OT_IMMED, { .k = ( k ) } };
+	return o;
+}
+#endif
 
 /*
 * Generic machine label

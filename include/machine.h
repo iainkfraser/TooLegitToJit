@@ -36,5 +36,10 @@ struct machine_ops {
 	void (*create_emitter)( struct emitter** e, size_t vmlines );
 };
 
+static inline int temp_reg( struct machine* m, int idx ){
+	// TODO: make sure there are enough temp regs ( SHOULD TEMP REGS be in machine not frame?? )
+	return m->reg[ idx ]; 
+}
+
 #endif 
 

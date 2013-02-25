@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include "frame.h"
+#include "lopcodes.h"
 
 void init_consts( struct frame* f, int n ){
 	f->consts = malloc( sizeof( operand ) * n );
@@ -84,5 +85,7 @@ vreg_operand vreg_to_operand( struct frame* f, int vreg, bool stackonly ){
 
 vreg_operand const_to_operand( struct frame* f, int k ){
 	vreg_operand o;
+	o.value = f->consts[ k ];
+	o.type = OP_TARGETIMMED( LUA_TNUMBER );
 	return o;
 }

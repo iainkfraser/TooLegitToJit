@@ -184,7 +184,7 @@ int load_code( FILE* f, struct proto* p, struct code_alloc* ca, struct machine* 
 	uint32_t ins;
 	int ret, seek, end;
 	struct emitter* mce;
-	struct frame fr = { .m = m, .nr_locals = p->maxstacksize, .nr_params = p->numparams };
+	struct frame fr = { .m = m, .nr_locals = p->maxstacksize, .nr_params = p->numparams, .nr_temp_regs = 4 };
 
 	// prepare function machine code emitter
 	load_member( p, sizecode, f );
@@ -422,17 +422,13 @@ int main( int argc, char* argv[] ){
 		.execperm = &em_execperm
 	};
 
-	static struct machine m = {
-		29,
-		18,
-		{ 0, 1 , 2, 3 }
-	};
 
+	extern struct machine mips_mach;
 	extern struct machine_ops mips_ops;
 
 	// init jit
 	do_cfail( validate_header( f ), "unacceptable header" );
-	do_cfail( load_function( f, &main, &ca, &m, &mips_ops ), "unable to load func" );
+	do_cfail( load_function( f, &main, &ca, &mips_mach, &mips_ops ), "unable to load func" );
 
 	if( !disassem )
 		execute( &main );
