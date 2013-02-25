@@ -50,7 +50,7 @@ void emit_move( struct emitter** mce, struct machine_ops* mop, struct frame* f, 
 */
 
 
-typedef void (*arch_bop)( struct emitter*, operand, operand, operand );
+typedef void (*arch_bop)( struct emitter*, struct machine* m, operand, operand, operand );
 
 static void emit_bop( struct emitter* me, struct frame* f, loperand d, loperand s, loperand t, arch_bop ab ){
 	vreg_operand od = loperand_to_operand( f, d ),
@@ -59,7 +59,7 @@ static void emit_bop( struct emitter* me, struct frame* f, loperand d, loperand 
 
 	// TODO: verify there all numbers 
 
-	ab( me, od.value, os.value, ot.value );
+	ab( me, f->m, od.value, os.value, ot.value );
 }
 
 void emit_add( struct emitter** mce, struct machine_ops* mop, struct frame* f, loperand d, loperand s, loperand t ){
@@ -146,10 +146,10 @@ void emit_forloop( struct emitter** mce, struct machine_ops* mop, struct frame* 
 void emit_newtable( struct emitter** mce, struct machine_ops* mop, struct frame* f, loperand dst, int array, int hash ){
 	loadim( mop, REF, f->m, _a0, array );
 	loadim( mop, REF, f->m, _a1, hash );
-	mop->call_cfn( REF, (uintptr_t)&table_create, 0 );
+	mop->call_cfn( REF, f->m, (uintptr_t)&table_create, 0 );
 
 	operand src = OP_TARGETREG( _v0 ); 
-	mop->move( REF, loperand_to_operand( f, dst ).value,  src );
+	mop->move( REF, f->m, loperand_to_operand( f, dst ).value,  src );
 }
 
 void emit_setlist( struct emitter** mce, struct machine_ops* mop, struct frame* f, loperand table, int n, int block ){
@@ -164,12 +164,12 @@ void emit_setlist( struct emitter** mce, struct machine_ops* mop, struct frame* 
 
 		loperand lval = { .islocal = true, .index = table.index + i };	
 
-		mop->move( REF, dst, loperand_to_operand( f, table ).value );
+		mop->move( REF, f->m, dst, loperand_to_operand( f, table ).value );
 		loadim( mop, REF, f->m, _a1, offset + i );
 		loadim( mop, REF, f->m, _a2, 0 );	// TODO: type
-		mop->move( REF, val, loperand_to_operand( f, lval ).value );
+		mop->move( REF, f->m, val, loperand_to_operand( f, lval ).value );
 	
-		mop->call_cfn( REF, (uintptr_t)&table_set, 0 );	
+		mop->call_cfn( REF, f->m, (uintptr_t)&table_set, 0 );	
 
 	}
 
@@ -182,13 +182,13 @@ void emit_gettable( struct emitter** mce, struct machine_ops* mop, struct frame*
 	operand i = OP_TARGETREG( _a1 );
 	operand src = OP_TARGETREG( _v0 ); 
 
-	mop->move( REF, t, loperand_to_operand( f, table ).value );
-	mop->move( REF, i, loperand_to_operand( f, idx ).value );
+	mop->move( REF, f->m, t, loperand_to_operand( f, table ).value );
+	mop->move( REF, f->m, i, loperand_to_operand( f, idx ).value );
 	// TODO: type
 
-	mop->call_cfn( REF, (uintptr_t)&table_get, 0 );
+	mop->call_cfn( REF, f->m, (uintptr_t)&table_get, 0 );
 
-	mop->move( REF, loperand_to_operand( f, dst ).value,  src );
+	mop->move( REF, f->m, loperand_to_operand( f, dst ).value,  src );
 
 }
 
@@ -211,11 +211,11 @@ void emit_call( struct emitter** mce, struct machine_ops* mop, struct frame* f, 
 	 struct emitter* me = REF;
 
 	// store live registers 
-	store_frame( me, f );	
+	store_frame( mop, me, f );	
 
 	// load args
 	operand arg_clo = OP_TARGETREG( _a0 ); 
-	mop->move( REF, arg_clo, loperand_to_operand( f, closure ).value );	
+	mop->move( REF, f->m, arg_clo, loperand_to_operand( f, closure ).value );	
 
 
 #if 0	// this way requires the function to know the nr_locals in this frame
@@ -241,5 +241,5 @@ void emit_call( struct emitter** mce, struct machine_ops* mop, struct frame* f, 
 #endif
 
 	// reload registers ( including constants ) 
-	load_frame( me, f );
+	load_frame( mop, me, f );
 }

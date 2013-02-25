@@ -15,7 +15,7 @@
 * Save and reload stack frames
 */
 
-void x_frame( struct arch_emitter* me, struct frame* f, bool isstore ){
+void x_frame( struct machine_ops* mop, struct emitter* me, struct frame* f, bool isstore ){
 //	operand st,sv,dt,dv;
 	vreg_operand s,d;
 	
@@ -30,19 +30,19 @@ void x_frame( struct arch_emitter* me, struct frame* f, bool isstore ){
 				
 		for( int i = 0; i < 2; i++ ){
 			if( s.o[i].tag == OT_REG )
-				arch_move( me, d.o[i], s.o[i] );
+				mop->move( me, f->m, d.o[i], s.o[i] );
 		}
 
 
 	}
 }
 
-void store_frame( struct arch_emitter* me, struct frame* f ){
-	x_frame( me, f, true );
+void store_frame( struct machine_ops* mop, struct emitter* e, struct frame* f ){
+	x_frame( mop, e, f, true );
 }
 
-void load_frame( struct arch_emitter* me, struct frame* f ){
-	x_frame( me, f, false );
+void load_frame( struct machine_ops* mop, struct emitter* e, struct frame* f ){
+	x_frame( mop, e, f, false );
 	// TODO: reload the constants 
 }
 
