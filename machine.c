@@ -73,6 +73,17 @@ void release_temp( struct machine_ops* mop, struct emitter* e, struct machine* m
 }
 
 
+int temps_accessed( struct machine* m ){
+	int i;
+
+	for( i = 0; i < m->nr_temp_regs - 1; i++ ){
+ 		if( GET_REFCOUNT( m->reg[i] ) > GET_REFCOUNT( m->reg[i+1] ) )
+			break;
+	}
+
+	return ( GET_REFCOUNT( m->reg[i] ) - 1 ) * m->nr_temp_regs + i + 1;
+}
+
 bool disable_spill( struct machine* m ){
 	bool prior = m->allow_spill;
 	m->allow_spill = false;

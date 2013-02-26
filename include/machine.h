@@ -45,9 +45,10 @@ struct machine_ops {
 * Temporary management for (sub)instructions. 
 */
 
+
+int temps_accessed( struct machine* m );
 int acquire_temp( struct machine_ops* mop, struct emitter* e, struct machine* m );
 void release_temp( struct machine_ops* mop, struct emitter* e, struct machine* m );
-
 
 bool disable_spill( struct machine* m );
 void restore_spill( struct machine* m, bool prior );

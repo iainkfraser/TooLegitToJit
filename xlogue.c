@@ -23,6 +23,7 @@ static int stack_frame_size( int nr_locals ){
 }
 
 void epilogue( struct machine_ops* mop, struct emitter* e, struct frame* f ){
+#if 0
 	const int rsp = f->m->sp;
 	operand osp = OP_TARGETREG( rsp );
 
@@ -37,11 +38,12 @@ void epilogue( struct machine_ops* mop, struct emitter* e, struct frame* f ){
 	release_specfic_temp( f->m, 1 );
 
 	mop->ret( e, f->m );
-
+#endif
 }
 
 
 void prologue( struct machine_ops* mop, struct emitter* e, struct frame* f ){
+#if 0
 	const int rsp = f->m->sp;
 	operand osp = OP_TARGETREG( rsp );
 
@@ -62,8 +64,10 @@ void prologue( struct machine_ops* mop, struct emitter* e, struct frame* f ){
 	release_specfic_temp( f->m, 2 );
 
 	mop->add( e, f->m, osp, osp, OP_TARGETIMMED( -stack_frame_size( f->nr_locals ) ) ); 
+#endif
 }
 
+#if 0
 // can overwrite rn because its not used afterwards 
 static void emit_nil_args( struct machine_ops* mop, struct emitter* e, struct frame* f, int basereg, int rn ){
 
@@ -118,3 +122,4 @@ static void emit_load_params( struct machine_ops* mop, struct emitter* me, struc
 		emit_copy_param( mop, me, f, dst, reg_value, i );
 	}	
 }
+#endif 
