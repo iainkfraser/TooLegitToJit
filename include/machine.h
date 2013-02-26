@@ -11,10 +11,11 @@
 #include "emitter.h"
 
 struct machine {
-	int sp;
-	int nr_reg;
-	int nr_temp_regs;  	// first NR_TEMP_REGS registers are temps the rest are used for locals and consts
-	int reg[];		// upper 2 words are free for emitter use for temp allocation
+	int 		sp;
+	int 		nr_reg;
+	int 		nr_temp_regs;  	// first NR_TEMP_REGS registers are temps the rest are used for locals and consts
+	bool		allow_spill;	// allow acquire_register to spill temp onto the stack  
+	uint32_t 	reg[];		// upper 2 words are free for emitter use for temp allocation
 };
 
 struct machine_ops {
@@ -41,23 +42,16 @@ struct machine_ops {
 };
 
 /*
-* Static temporary register allocation. Idea is you can stop subinstructions
-* cloberring temporaries. Obviously this doesn't do dynamic code analysis and
-* therefore can't guarantee that some other instructions ( i.e. branches ) clobber
-* the temporary.
+* Temporary management for (sub)instructions. 
 */
-int acquire_specfic_temp( struct machine* m, int idx );
-int acquire_temp( struct machine* m );
 
-void release_temp( struct machine* m, int reg );
-void release_specfic_temp( struct machine *m, int idx );
+int acquire_temp( struct machine_ops* mop, struct emitter* e, struct machine* m );
+void release_temp( struct machine_ops* mop, struct emitter* e, struct machine* m );
 
-#if 0
-static inline int temp_reg( struct machine* m, int idx ){
-	assert( idx < m->nr_temp_regs );		// TODO: error checking instead
-	return m->reg[ idx ]; 
-}
-#endif 
+
+bool disable_spill( struct machine* m );
+void restore_spill( struct machine* m, bool prior );
+void enable_spill( struct machine* m );
 
 #endif 
 

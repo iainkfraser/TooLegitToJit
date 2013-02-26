@@ -6,49 +6,86 @@
 #include <stdbool.h>
 #include "machine.h"
 
-#define TEMP_FLAG	0x10000
+#define REG_MASK		0xffff
+#define GET_REG( r ) 		( ( r ) & REG_MASK )
+#define GET_REFCOUNT( r )	( ( ( r ) >> 16 ) & REG_MASK )
+#define SET_REFCOUNT( r, rc )	( ( ( ( rc ) & 0xffff ) << 16 ) | GET_REG( r )  )
+#define STACK_POS( idx, rc, n, wordsize )		\
+	( 4 * ( ( rc - 1 ) * n  + idx + 1 )
 
-
-static int do_acq_temp( struct machine* m, int i ){
-	if( m->reg[ i ] & TEMP_FLAG )	return -1;
-	int reg = m->reg[ i ];
-	m->reg[ i ] |= TEMP_FLAG;
-	return reg;
+static int abs_stack_offset( int idx, int rc, int n, size_t word ){
+	return 4 * ( ( rc  - 1 ) * n + idx + rc );
 }
 
-int acquire_specfic_temp( struct machine* m, int idx ){
-	int reg;
+int acquire_temp( struct machine_ops* mop, struct emitter* e, struct machine* m ) {
+	int i,rc,reg;
 
-	if( ( reg = do_acq_temp( m, idx ) ) != -1 )
-		return reg;
-
-	assert( false );	// TODO: proper error handling	
-}
-
-int acquire_temp( struct machine* m ){
-	int reg;
-
-	for( int i = 0; i < m->nr_temp_regs; i++ ){
-		if( ( reg = do_acq_temp( m, i ) ) != -1 )
-			return reg;
+	// slots refcount have invariant slot( i + 1 ) <= slot( i ),  i >= 0 
+	for( i = m->nr_temp_regs - 1; i > 0; i-- ){
+		if( GET_REFCOUNT( m->reg[i] ) < GET_REFCOUNT( m->reg[i-1] ) )
+			break;	
 	}
 
-	assert( false );		// TODO: proper error handling 
-	return 0;
-}
+	rc = GET_REFCOUNT( m->reg[i] );
+	reg = GET_REG( m->reg[i] );
 
-void release_temp( struct machine* m, int reg ){
-	for( int i = 0; i < m->nr_temp_regs; i++ ){
-		if(  ( m->reg[ i ] & ~TEMP_FLAG ) == reg  ){	
-			m->reg[ i ] &= ~TEMP_FLAG;
-			return;
-		}
+	// if being accessed already then spill onto the stack 
+	if( rc > 0 ){
+		assert( m->allow_spill );	// TODO: error handling 
+		
+		operand dst = OP_TARGETDADDR( m->sp, -abs_stack_offset( i, rc, m->nr_temp_regs, 4 ) );
+		operand src = OP_TARGETREG( reg ); 
+		
+		bool prior = disable_spill( m );
+		mop->move( e, m, dst, src ); 		
+		restore_spill( m, prior );
+	 
+
 	}
 
-	assert( false );
+	m->reg[i] = SET_REFCOUNT( m->reg[i], ++rc );	
+	return reg; 
+}
+
+void release_temp( struct machine_ops* mop, struct emitter* e, struct machine* m ) {
+	int i,rc, reg;
+
+	for( i = 0; i < m->nr_temp_regs - 1; i++ ){
+ 		if( GET_REFCOUNT( m->reg[i] ) > GET_REFCOUNT( m->reg[i+1] ) )
+			break;
+	}
+
+	reg = GET_REG( m->reg[i] );
+	rc = GET_REFCOUNT( m->reg[i] );
+	assert( rc > 0 );
+
+	// if after release its still being accessed then reload from stack  
+	if( --rc > 0 ){
+		operand dst = OP_TARGETREG( reg ); 
+		operand src = OP_TARGETDADDR( m->sp, -abs_stack_offset( i, rc, m->nr_temp_regs, 4 ) );
+		
+		bool prior = disable_spill( m );
+		mop->move( e, m, dst, src ); 		
+		restore_spill( m, prior );
+	}
+
+	m->reg[i] = SET_REFCOUNT( m->reg[i], rc );	
 }
 
 
-void release_specfic_temp( struct machine *m, int idx ){
-
+bool disable_spill( struct machine* m ){
+	bool prior = m->allow_spill;
+	m->allow_spill = false;
+	return prior; 
 }
+
+void restore_spill( struct machine* m, bool prior ){
+	m->allow_spill = prior; 
+}
+
+void enable_spill( struct machine* m ){
+	m->allow_spill = true; 
+}
+
+
+
