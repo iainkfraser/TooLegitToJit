@@ -54,5 +54,13 @@ bool disable_spill( struct machine* m );
 void restore_spill( struct machine* m, bool prior );
 void enable_spill( struct machine* m );
 
+
+/*
+* Load operands into simultaneous registers ( using temporaries ). 
+*/
+
+int load_coregisters( struct machine_ops* mop, struct emitter* me, struct machine* m, int nr_oper, ... );
+void unload_coregisters( struct machine_ops* mop, struct emitter* me, struct machine* m, int n );
+
 #endif 
 

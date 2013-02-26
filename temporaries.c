@@ -3,6 +3,7 @@
 * Physical machine interface. Utility functions. 
 */
 
+#include <stdarg.h>
 #include <stdbool.h>
 #include "machine.h"
 
@@ -84,6 +85,10 @@ int temps_accessed( struct machine* m ){
 	return ( GET_REFCOUNT( m->reg[i] ) - 1 ) * m->nr_temp_regs + i + 1;
 }
 
+/*
+* Spill toggle 
+*/
+
 bool disable_spill( struct machine* m ){
 	bool prior = m->allow_spill;
 	m->allow_spill = false;
@@ -99,4 +104,41 @@ void enable_spill( struct machine* m ){
 }
 
 
+/*
+* Simultaneous register loads. 
+*/
+
+int load_coregisters( struct machine_ops* mop, struct emitter* me, struct machine* m, int nr_oper, ... ){
+	va_list ap;
+	operand *op;
+	int temps = 0;
+
+	va_start( ap, nr_oper );
+
+	for( int i = 0; i < nr_oper; i++ ){
+		op = va_arg( ap, operand* );
+		if( op->tag != OT_REG ){
+			operand dst = OP_TARGETREG( acquire_temp( mop, me, m ) ); 
+		
+			bool prior = disable_spill( m );
+			mop->move( me, m, dst, *op ); 		
+			restore_spill( m, prior );
+
+			*op = dst; 
+			temps++;
+		}
+	}
+
+	va_end( ap );
+
+	// verify simultenously in registers
+	assert( temps <= m->nr_temp_regs );
+
+	return temps;
+}
+
+void unload_coregisters( struct machine_ops* mop, struct emitter* me, struct machine* m, int n ){
+	for( int i = 0; i < n; i++)
+		release_temp( mop, me, m );
+}
 

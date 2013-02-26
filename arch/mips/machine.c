@@ -63,39 +63,6 @@ static void loadreg( struct emitter* me, operand* d, int temp_reg, bool forcereg
 	d->reg = temp_reg;
 } 
 
-/*
-* Use load_temps and unload_temps when acquiring temporary register depends
-* if operand is already in regsiter ( typical for rvalue operands ).
-*
-* Btw the call with max nr_oper is the minimum number of temporary registers required
-* by the implementation. i.e. nr_oper is way of specifying amount of simultenous 
-* unspilled temporaries. 
-*/
-
-static int load_temps( struct emitter* me, struct machine* m, int nr_oper, ... ){
-	va_list ap;
-	operand *op;
-	int temps = 0;
-
-	va_start( ap, nr_oper );
-
-	for( int i = 0; i < nr_oper; i++ ){
-		op = va_arg( ap, operand* );
-		if( op->tag != OT_REG ){
-			loadreg( me, op, acquire_temp( _MOP, me, m ), false ); 
-			temps++;
-		}
-	}
-
-	va_end( ap );
-
-	return temps;
-}
-
-static void unload_temps( struct emitter* me, struct machine* m, int n ){
-	for( int i = 0; i < n; i++)
-		release_temp( _MOP, me, m );
-}
 
 static void move( struct emitter* me, struct machine* m, operand d, operand s ){
 	assert( d.tag == OT_REG || d.tag == OT_DIRECTADDR );	
@@ -123,7 +90,7 @@ static void do_bop( struct emitter* me, struct machine* m, operand d, operand s,
 	loadreg( me, m, &s, t0, false );
 	loadreg( me, m, &t, t1, false ); */
 
-	int temps = load_temps( me, m, 2, &s, &t );
+	int temps = load_coregisters( _MOP, me, m, 2, &s, &t );
 
 	assert( s.tag == OT_REG && t.tag == OT_REG );
 
@@ -133,7 +100,7 @@ static void do_bop( struct emitter* me, struct machine* m, operand d, operand s,
 	if( d.tag == OT_DIRECTADDR )		// | sw reg, d.addr 
 		ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( MOP_SW, d.base, dreg, d.offset ) );
 
-	unload_temps( me, m, temps );
+	unload_coregisters( _MOP, me, m, temps );
 }
 
 static void do_div( struct emitter *me, struct machine* m, operand d, operand s, operand t, bool islow  ){
@@ -141,7 +108,7 @@ static void do_div( struct emitter *me, struct machine* m, operand d, operand s,
 	do_bop( me, m, nil, s, t, MOP_SPECIAL_DIV, MOP_SPECIAL );
 
 	operand src = d;
-	int temps = load_temps( me, m, 1, &src );
+	int temps = load_coregisters( _MOP, me, m, 1, &src );
 
 	// load the quotient into the dest
 	ENCODE_OP( me, GEN_MIPS_OPCODE_3REG( MOP_SPECIAL, _zero, _zero, src.reg, islow ? MOP_SPECIAL_MFLO : MOP_SPECIAL_MFHI ) );
@@ -149,7 +116,7 @@ static void do_div( struct emitter *me, struct machine* m, operand d, operand s,
 	if( d.tag != OT_REG )
 		move( me, m, d, src );
 
-	unload_temps( me, m , temps );	
+	unload_coregisters( _MOP, me, m , temps );	
 }
 
 
@@ -203,12 +170,12 @@ void b( struct emitter* me, struct machine* m, label l ){
 
 
 static void beq( struct emitter* me, struct machine* m, operand d, operand s, label l ){
-	int temps = load_temps( me, m, 2, &d, &s );
+	int temps = load_coregisters( _MOP, me, m, 2, &d, &s );
 
 	EMIT( MI_BEQ( d.reg, s.reg, branch( me, l ) ) );
 	EMIT( MI_NOP( ) );
 	
-	unload_temps( me, m, temps );
+	unload_coregisters( _MOP, me, m, temps );
 }
 
 static void blt( struct emitter* me, struct machine* m, operand d, operand s, label l ){
@@ -245,14 +212,14 @@ static void bge( struct emitter* me, struct machine* m, operand d, operand s, la
 
 
 static void call( struct emitter* me, struct machine* m, operand fn ){
-	int temps = load_temps( me, m, 1, &fn );
+	int temps = load_coregisters( _MOP, me, m, 1, &fn );
 
 	EMIT( MI_ADDIU( m->sp, m->sp, -4 ) );
 	EMIT( MI_JALR( fn.reg ) );
 	EMIT( MI_SW( _ra, m->sp, 0 ) );		// delay slot dummy
 	EMIT( MI_ADDIU( m->sp, m->sp, 4 ) );
 
-	unload_temps( me, m, temps );
+	unload_coregisters( _MOP, me, m, temps );
 }
 
 static void ret( struct emitter* me, struct machine* m ){
