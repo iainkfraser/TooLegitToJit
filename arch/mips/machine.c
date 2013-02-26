@@ -59,11 +59,13 @@ static void loadreg( struct emitter* me, struct machine* m, operand* d, int temp
 static void move( struct emitter* me, struct machine* m, operand d, operand s ){
 	assert( d.tag == OT_REG || d.tag == OT_DIRECTADDR );	
 
-	int reg = d.tag == OT_REG ? d.reg : temp_reg( m, 0 ); 
+	int reg = d.tag == OT_REG ? d.reg : acquire_temp( m ); 
 	loadreg( me, m, &s, reg, d.tag == OT_REG );
 
-	if( d.tag == OT_DIRECTADDR )		// | sw reg, d.addr 
+	if( d.tag == OT_DIRECTADDR ){		// | sw reg, d.addr 
 		ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( MOP_SW, d.base, s.reg, d.offset ) );
+		release_temp( m, reg );
+	}
 }
 
 /*
@@ -74,16 +76,22 @@ static void move( struct emitter* me, struct machine* m, operand d, operand s ){
 static void do_bop( struct emitter* me, struct machine* m, operand d, operand s, operand t, int op, int special ){
 	assert( d.tag == OT_REG || d.tag == OT_DIRECTADDR );
 
-	loadreg( me, m, &s, temp_reg( m, 1 ), false );
-	loadreg( me, m, &t, temp_reg( m, 2 ), false );
+	int t0 = acquire_temp( m );
+	int t1 = acquire_temp( m );
+
+	loadreg( me, m, &s, t0, false );
+	loadreg( me, m, &t, t1, false );
 
 	assert( s.tag == OT_REG && t.tag == OT_REG );
 
-	int dreg = d.tag == OT_REG ? d.reg : temp_reg( m, 0 );
+	int dreg = d.tag == OT_REG ? d.reg : t0;
 	ENCODE_OP( me, GEN_MIPS_OPCODE_3REG( special, s.reg, t.reg, dreg, op ) );
 
 	if( d.tag == OT_DIRECTADDR )		// | sw reg, d.addr 
 		ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( MOP_SW, d.base, dreg, d.offset ) );
+
+	release_temp( m, t0 );
+	release_temp( m, t1 );
 		 
 }
 
@@ -92,11 +100,13 @@ static void do_div( struct emitter *me, struct machine* m, operand d, operand s,
 	do_bop( me, m, nil, s, t, MOP_SPECIAL_DIV, MOP_SPECIAL );
 
 	// load the quotient into the dest
-	operand src = OP_TARGETREG( d.tag == OT_REG ? d.reg : temp_reg( m, 0 ) );
+	operand src = OP_TARGETREG( d.tag == OT_REG ? d.reg : acquire_temp( m ) );
 	ENCODE_OP( me, GEN_MIPS_OPCODE_3REG( MOP_SPECIAL, _zero, _zero, src.reg, islow ? MOP_SPECIAL_MFLO : MOP_SPECIAL_MFHI ) );
 
-	if( d.tag != OT_REG )
+	if( d.tag != OT_REG ) {
 		move( me, m, d, src );
+		release_temp( m, src.reg );
+	}
 }
 
 
@@ -148,11 +158,32 @@ void b( struct emitter* me, struct machine* m, label l ){
 	EMIT( MI_NOP() );
 }
 
+static int load_tempreg( struct emitter* me, struct machine* m, operand* d ){
+	if( d->tag != OT_REG ){
+		int reg = acquire_temp( m );	
+		loadreg( me, m, d, reg, false );
+		return reg;
+	}	
+
+	return -1;	
+}
+
+static void unload_tempreg( struct machine* m, int reg ){
+	if( reg != -1 )
+		release_temp( m, reg );
+}
+
 static void beq( struct emitter* me, struct machine* m, operand d, operand s, label l ){
-	loadreg( me, m, &d, temp_reg( m, 0 ), false );
-	loadreg( me, m, &s, temp_reg( m, 1 ), false );
+//	loadreg( me, m, &d, temp_reg( m, 0 ), false );
+//	loadreg( me, m, &s, temp_reg( m, 1 ), false );
+	int t0 = load_tempreg( me, m, &d );
+	int t1 = load_tempreg( me, m, &s );
+
 	EMIT( MI_BEQ( d.reg, s.reg, branch( me, l ) ) );
 	EMIT( MI_NOP( ) );
+	
+	unload_tempreg( m, t0 );
+	unload_tempreg( m, t1 );
 }
 
 static void blt( struct emitter* me, struct machine* m, operand d, operand s, label l ){
@@ -160,13 +191,15 @@ static void blt( struct emitter* me, struct machine* m, operand d, operand s, la
 }
 
 static void bgt( struct emitter* me, struct machine* m, operand d, operand s, label l ){
-	int rtemp = temp_reg( m, 0 );
+	int rtemp = acquire_temp( m );
 	operand otemp = OP_TARGETREG( rtemp );
 
 	sub( me, m, otemp, d, s );
 	
 	EMIT( MI_BGTZ( rtemp, branch( me, l ) ) );
 	EMIT( MI_NOP( ) );
+
+	release_temp( m, rtemp );
 }
 
 static void ble( struct emitter* me, struct machine* m, operand d, operand s, label l ){
@@ -174,22 +207,27 @@ static void ble( struct emitter* me, struct machine* m, operand d, operand s, la
 }
 
 static void bge( struct emitter* me, struct machine* m, operand d, operand s, label l ){
-	int rtemp = temp_reg( m, 0 );
+	int rtemp = acquire_temp( m );
 	operand otemp = OP_TARGETREG( rtemp );
 
 	sub( me, m, otemp, d, s );
 	
 	EMIT( MI_BGEZ( rtemp, branch( me, l ) ) );
 	EMIT( MI_NOP( ) );
+
+	release_temp( m, rtemp );
 }
 
 
 static void call( struct emitter* me, struct machine* m, operand fn ){
-	loadreg( me, m, &fn, temp_reg( m, 0 ), false );
+	int t0 = load_tempreg( me, m, &fn );
+
 	EMIT( MI_ADDIU( m->sp, m->sp, -4 ) );
 	EMIT( MI_JALR( fn.reg ) );
 	EMIT( MI_SW( _ra, m->sp, 0 ) );		// delay slot dummy
 	EMIT( MI_ADDIU( m->sp, m->sp, 4 ) );
+
+	unload_tempreg( m, t0 );
 }
 
 static void ret( struct emitter* me, struct machine* m ){

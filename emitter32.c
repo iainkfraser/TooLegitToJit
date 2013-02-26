@@ -187,6 +187,7 @@ static uint32_t find_local_label( struct emitter32* e, int pc, int local, bool i
 
 }
 
+
 /*
 * Emitter specilisations 
 */

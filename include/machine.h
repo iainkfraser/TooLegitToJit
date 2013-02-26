@@ -13,8 +13,8 @@
 struct machine {
 	int sp;
 	int nr_reg;
-	int nr_temp_regs;  // first NR_TEMP_REGS registers are temps the rest are used for locals and consts
-	int reg[];
+	int nr_temp_regs;  	// first NR_TEMP_REGS registers are temps the rest are used for locals and consts
+	int reg[];		// upper 2 words are free for emitter use for temp allocation
 };
 
 struct machine_ops {
@@ -40,10 +40,24 @@ struct machine_ops {
 	void (*create_emitter)( struct emitter** e, size_t vmlines );
 };
 
+/*
+* Static temporary register allocation. Idea is you can stop subinstructions
+* cloberring temporaries. Obviously this doesn't do dynamic code analysis and
+* therefore can't guarantee that some other instructions ( i.e. branches ) clobber
+* the temporary.
+*/
+int acquire_specfic_temp( struct machine* m, int idx );
+int acquire_temp( struct machine* m );
+
+void release_temp( struct machine* m, int reg );
+void release_specfic_temp( struct machine *m, int idx );
+
+#if 0
 static inline int temp_reg( struct machine* m, int idx ){
 	assert( idx < m->nr_temp_regs );		// TODO: error checking instead
 	return m->reg[ idx ]; 
 }
+#endif 
 
 #endif 
 
