@@ -53,11 +53,11 @@ static size_t link( struct emitter* e ){
 		branch* b = list_entry( seek, branch, link );	
 		
 		if( b->islocal )
-			offset = (int16_t)( find_local_label( SELF, b->mline, b->local, b->isnext ) - b->mline ) - 1;
+			offset = (int16_t)( find_local_label( SELF, b->mline, b->local, b->isnext ) - ( b->mline + 1 ) );
 		else	
 			offset = (int16_t)( SELF->jt[ b->vline ] - b->mline ) - 1;  
 	
-		// calculate new value
+		// calculate new value - TODO: this should be offloaded to callback so its truly generic 
 		value = ( SELF->mcode[ b->mline ] & ~0xffff ) | ( offset & 0xffff );
 	
 		// overwrite immediate operand	
@@ -172,18 +172,24 @@ void emitter32_create( struct emitter** e, size_t vmlines ){
 
 static uint32_t find_local_label( struct emitter32* e, int pc, int local, bool isnext ) {
 	struct list_head* seek;
-	list_for_each( seek , &e->local[ local ] ){
-		local_label* sll = list_entry( seek, local_label, link );	
-		
-		if( pc >= sll->pc && !isnext )
-			return sll->pc;
 
-		if( pc <= sll->pc && isnext  )
-			return sll->pc;
+	if( isnext ){
+		list_for_each( seek , &e->local[ local ] ){
+			local_label* sll = list_entry( seek, local_label, link );	
+			if( pc <= sll->pc  )
+				return sll->pc;
+			
+		}
 	
+	}  else {
+		list_for_each_prev( seek, &e->local[ local ] ) {
+			local_label* sll = list_entry( seek, local_label, link );	
+			if( pc > sll->pc )
+				return sll->pc; 
+		}
 	}
 
-	assert( false );
+	assert( false );	// TODO: error handling 
 
 }
 

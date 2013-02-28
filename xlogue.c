@@ -2,9 +2,6 @@
 * (C) Iain Fraser - GPLv3 
 *
 * Lua function prologue and epilogue code generation. 
-
-* Functions are called after Lua constants are loaded ( see frame.c )
-* and processed.  
 */
 
 #include <stdbool.h>
@@ -30,7 +27,7 @@ static void prefer_nontemp_acquire_reg( struct machine_ops* mop, struct emitter*
 
 	for( int i = 0; i < n; i++ ){
 		if( i < nr_nontemps )
-			reg[i] = OP_TARGETREG( nr_temps + i );
+			reg[i] = OP_TARGETREG( m->reg[ nr_temps + i ] );
 		else
 			reg[i] = OP_TARGETREG( acquire_temp( mop, e, m ) );	// ( i - nr_nontemps );	
 	}
@@ -94,6 +91,10 @@ static void load_args( struct machine_ops* mop, struct emitter* e, struct frame*
 	mop->add( e, f->m, t0, t0, OP_TARGETIMMED( 8 ) ); 
 	mop->b( e, f->m, LBL_PREV( 0 ) );
 	e->ops->label_local( e, 0 );
+
+	// release the temp iterator 
+	release_temp( mop, e, f->m );
+
 }
 
 void prologue( struct machine_ops* mop, struct emitter* e, struct frame* f ){
@@ -105,21 +106,25 @@ void prologue( struct machine_ops* mop, struct emitter* e, struct frame* f ){
 
 	// first things first sub stack
 	operand sp = OP_TARGETREG( f->m->sp );
+	// TODO: disable temps
 	mop->add( e, f->m, sp, sp, OP_TARGETIMMED( -stack_frame_size( f->nr_locals ) ) ); 
+	// TODO: enable temps 
 
 	// get arg passing registers
 	operand rargs[ RA_COUNT ];
 	prefer_nontemp_acquire_reg( mop, e, f->m, RA_COUNT, rargs );
 
 	// do this first its very delicate 
-	load_args( mop, e, f, rargs );
+	if( f->nr_params >= 0 )			// TODO: obivously change to > 0 once intial testing done
+		load_args( mop, e, f, rargs );
 
 	// store metaframe section
 	mop->move( e, f->m, OP_TARGETDADDR( f->m->sp, meta_off ), rargs[ RA_NR_RESULTS ] );
 	mop->move( e, f->m, OP_TARGETDADDR( f->m->sp, meta_off + 4 ), rargs[ RA_BASE ] );
 	mop->move( e, f->m, OP_TARGETDADDR( f->m->sp, meta_off + 8 ), rargs[ RA_CLOSURE ] );
 
-	release_temp( mop, e, f->m );
+	prefer_nontemp_release_reg( mop, e, f->m, RA_COUNT );
+
 
 	// load live registers  
 	load_frame( mop, e, f );
@@ -141,7 +146,7 @@ void epilogue( struct machine_ops* mop, struct emitter* e, struct frame* f ){
 	mop->move( e, f->m, rargs[ RA_BASE ], OP_TARGETDADDR( f->m->sp, meta_off + 4 ) );
 	mop->move( e, f->m, rargs[ RA_CLOSURE ], OP_TARGETDADDR( f->m->sp, meta_off + 8 ) );
 
-	release_temp( mop, e, f->m );
+	prefer_nontemp_release_reg( mop, e, f->m, RA_COUNT );
 
 	// move stack to prior frame
 	operand sp = OP_TARGETREG( f->m->sp );
