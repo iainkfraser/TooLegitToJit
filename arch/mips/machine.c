@@ -223,6 +223,7 @@ static void call( struct emitter* me, struct machine* m, operand fn ){
 
 static void ret( struct emitter* me, struct machine* m ){
 	EMIT( MI_JR( _ra ) );
+	EMIT( MI_NOP( ) );
 }
 
 

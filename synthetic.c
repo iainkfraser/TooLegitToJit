@@ -36,3 +36,8 @@ void pushn( struct machine_ops* mop, struct emitter* e, struct machine* m, int n
 
 	va_end( ap );
 }
+
+void popn( struct machine_ops* mop, struct emitter* e, struct machine* m, int nr_operands, ... ){
+	// TODO: 
+	;
+}

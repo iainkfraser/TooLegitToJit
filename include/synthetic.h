@@ -12,6 +12,8 @@
 void assign( struct machine_ops* mop, struct emitter* e, struct machine* m, vreg_operand d, vreg_operand s );
 void loadim( struct machine_ops* mop, struct emitter* e, struct machine* m, int reg, int value ); 
 void pushn( struct machine_ops* mop, struct emitter* e, struct machine* m, int nr_operands, ... );
+void popn( struct machine_ops* mop, struct emitter* e, struct machine* m, int nr_operands, ... );
 
 #define push( mop, e, m, s )	pushn( mop, e, m, 1, s )
+#define pop( mop, e, m, s )	popn( mop, e, m, 1, s )
 #endif

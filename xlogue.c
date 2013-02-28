@@ -44,13 +44,13 @@ static void prefer_nontemp_release_reg( struct machine_ops* mop, struct emitter*
 
 
 // in order of nontemporary register assignment priority 
-enum REGARGS { RA_NR_ARGS, RA_BASE, RA_NR_RESULTS, RA_CLOSURE, RA_COUNT };
+enum REGARGS { RA_NR_ARGS, RA_BASE, RA_COUNT };
 
 
-void do_call( struct machine_ops* mop, struct emitter* e, struct frame* f, int vregbase, int narg, int nret ){
+static void caller_prologue( struct machine_ops* mop, struct emitter* e, struct frame* f, int vregbase, int narg, int nreg ){
 	// new frame assumes no temporaries have been used yet 
 	assert( temps_accessed( f->m ) == 0 );
-	assert( RA_COUNT <= f->m->nr_reg );		// regargs are passed by register NOT stack
+	assert( RA_COUNT + 1 <= f->m->nr_reg );		// regargs are passed by register NOT stack
 
 	vreg_operand clive = vreg_to_operand( f, vregbase, false );
  	vreg_operand cstack = vreg_to_operand( f, vregbase, true );
@@ -62,58 +62,52 @@ void do_call( struct machine_ops* mop, struct emitter* e, struct frame* f, int v
 	operand rargs[ RA_COUNT ];
 	prefer_nontemp_acquire_reg( mop, e, f->m, RA_COUNT, rargs );
 
+	// calculate number of args
 	if( narg > 0 )
-		mop->move( e, f->m, rargs[ RA_NR_ARGS ], OP_TARGETIMMED( narg ) );
+		mop->move( e, f->m, rargs[ RA_NR_ARGS ], OP_TARGETIMMED( narg - 1 ) );
 	else
 		; 	// TODO: calculate total args by adding slots to start of base results 
-	mop->move( e, f->m, rargs[ RA_NR_RESULTS ], OP_TARGETIMMED( nret ) );
-	mop->move( e, f->m, rargs[ RA_CLOSURE ], clive.value );
 
-	// calculate base address 
+
+	// calcualte base address	
 	mop->add( e, f->m, rargs[ RA_BASE ], OP_TARGETREG( cstack.value.base ), OP_TARGETIMMED( cstack.value.offset ) );
 	
-	mop->call( e, f->m, rargs[ RA_CLOSURE ] );
+	// call function without spilling any temps
+	bool prior = disable_spill( f->m );
+	mop->call( e, f->m, clive.value );
+	restore_spill( f->m, prior );
 
+	// release temps used in call
 	prefer_nontemp_release_reg( mop, e, f->m, RA_COUNT );
-
-	// TODO: load resslts intto position
-
-	// TODO: inflate / deflate stack  	
-
-
 }
 
-void prologue( struct machine_ops* mop, struct emitter* e, struct frame* f ){
-	// new frame assumes no temporaries have been used yet 
-	assert( temps_accessed( f->m ) == 0 );
-	assert( RA_COUNT <= f->m->nr_reg );		// regargs are passed by register NOT stack
+static void caller_epilogue( struct machine_ops* mop, struct emitter* e, struct frame* f, int vregbase, int narg, int nreg ){
+	// TODO: load resslts intto position
+	// TODO: inflate / deflate stack  	
+}
 
-	operand sp = OP_TARGETREG( f->m->sp );
-	operand fp = OP_TARGETREG( f->m->fp );
+void do_call( struct machine_ops* mop, struct emitter* e, struct frame* f, int vregbase, int narg, int nret ){
+	caller_prologue( mop, e, f, vregbase, narg, nret );
+	caller_epilogue( mop, e, f, vregbase, narg, nret );
+}
 
-	// get arg passing registers
-	operand rargs[ RA_COUNT ];
-	prefer_nontemp_acquire_reg( mop, e, f->m, RA_COUNT, rargs );
+void copy_args( struct machine_ops* mop, struct emitter* e, struct frame* f, operand rargs[ RA_COUNT ] ){
+	const operand fp = OP_TARGETREG( f->m->fp );
 
-	// push old frame pointer, closure addr / result start addr, expected nr or results 
-	pushn( mop, e, f->m, 3, fp, rargs[ RA_BASE ], rargs[ RA_NR_RESULTS ] ); 
-
-	// set ebp and update stack
-	mop->move( e, f->m, fp, sp );
-	mop->add( e, f->m, sp, sp, OP_TARGETIMMED( -( 8 * f->nr_locals ) ) ); 
-
-	// copy args, first set NR_ARGS as loop terminator 
-
+	// copy args, need two temps that must be live simultenously
+	bool prior = disable_spill( f->m );
 	operand iter = OP_TARGETREG( acquire_temp( mop, e, f->m ) );
 	operand dst = OP_TARGETREG( acquire_temp( mop, e, f->m ) );
+	restore_spill( f->m, prior );	
 
 	mop->move( e, f->m, iter, OP_TARGETIMMED( 0 ) );
-	mop->move( e, f->m, dst, fp );
+	mop->add( e, f->m, dst, fp, OP_TARGETIMMED( 4 ) );		// skip over closure 
+	mop->add( e, f->m, rargs[ RA_BASE ], rargs[ RA_BASE ], OP_TARGETIMMED( 8 ) );	// base should be +8 so skip over closure
 
 	e->ops->label_local( e, 0 );
 	mop->beq( e, f->m, iter, rargs[ RA_NR_ARGS ], LBL_NEXT( 0 ) );  
 	
-	// cop type and value
+	// copy type and value
 	mop->move( e, f->m, OP_TARGETDADDR( dst.reg, 0 ), OP_TARGETDADDR( rargs[ RA_BASE ].reg, 0 ) );
 	mop->move( e, f->m, OP_TARGETDADDR( dst.reg, 4 ), OP_TARGETDADDR( rargs[ RA_BASE ].reg, 4 ) );
 	
@@ -127,29 +121,50 @@ void prologue( struct machine_ops* mop, struct emitter* e, struct frame* f ){
 	mop->b( e, f->m, LBL_PREV( 0 ) );
 	e->ops->label_local( e, 0 );
 
-	// TODO: copy nil
-	
+	release_temp( mop, e, f->m );
+	release_temp( mop, e, f->m );
+}
+
+void prologue( struct machine_ops* mop, struct emitter* e, struct frame* f ){
+	// new frame assumes no temporaries have been used yet 
+	assert( temps_accessed( f->m ) == 0 );
+	assert( RA_COUNT <= f->m->nr_reg );		// regargs are passed by register NOT stack
+
+	const operand sp = OP_TARGETREG( f->m->sp );
+	const operand fp = OP_TARGETREG( f->m->fp );
+
+	// get arg passing registers
+	operand rargs[ RA_COUNT ];
+	prefer_nontemp_acquire_reg( mop, e, f->m, RA_COUNT, rargs );
+
+	// push old frame pointer, closure addr / result start addr, expected nr or results 
+	pushn( mop, e, f->m, 2, fp, rargs[ RA_BASE ] ); 
+
+	// set ebp and update stack
+	mop->add( e, f->m, fp, sp, OP_TARGETIMMED( 4 ) );	// point to ebp so add 4 
+	mop->add( e, f->m, sp, sp, OP_TARGETIMMED( -( 8 * f->nr_locals ) ) ); 
+
+	if( f->nr_params ){
+		copy_args( mop, e, f, rargs );
+		// TODO: copy nil
+	 	load_frame_limit( mop, e, f, f->nr_params );	// load locals living in registers 
+	}
 
 	prefer_nontemp_release_reg( mop, e, f->m, RA_COUNT );
 }
 
 void epilogue( struct machine_ops* mop, struct emitter* e, struct frame* f ){
-	// get arg passing registers
-	operand rargs[ RA_COUNT ];
-	prefer_nontemp_acquire_reg( mop, e, f->m, RA_COUNT, rargs );
+	const operand sp = OP_TARGETREG( f->m->sp );
+	const operand fp = OP_TARGETREG( f->m->fp );
+
+	// TODO: colloborate with return,
+	//  1) assume the return call, has set the number of parameters returned 
+	//  2) set the base to fp + 4 
 
 	// reset stack 
 	mop->move( e, f->m, sp, fp );
-
-	// TODO: handle when number of results is 0, we use our results to set it 
-	// pop old frame pointer, closure addr / result start addr, expected nr or results 
-	popn( mop, e, f->m, 3, fp, rargs[ RA_BASE ], rargs[ RA_NR_RESULTS ] ); 
-
-	// TODO: don't need to store the number of results since caller will be moving. Only need to store how many actual results there are
-
-	// return 	
-
-	prefer_nontemp_release_reg( mop, e, f->m, RA_COUNT );
+	pop( mop, e, f->m, fp );
+	mop->ret( e, f->m );
 }
 
 #if 0		// doesn't work because return address will overwrite and some arch ( ahem! x86 ) haven no alternatives 
@@ -281,7 +296,7 @@ void do_call( struct machine_ops* mop, struct emitter* e, struct frame* f, int v
 	prefer_nontemp_acquire_reg( mop, e, f->m, RA_COUNT, rargs );
 
 	if( narg > 0 )
-		mop->move( e, f->m, rargs[ RA_NR_ARGS ], OP_TARGETIMMED( narg ) );
+		mop->move( e, f->m, rargs[ RA_NR_ARGS ], OP_TARGETIMMED( narg - 1 ) );
 
 	mop->move( e, f->m, rargs[ RA_NR_RESULTS ], OP_TARGETIMMED( nret ) );
 	mop->move( e, f->m, rargs[ RA_CLOSURE ], clive.value );

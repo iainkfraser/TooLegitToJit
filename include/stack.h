@@ -12,5 +12,6 @@
 
 void store_frame( struct machine_ops* mop, struct emitter* e, struct frame* f );
 void load_frame( struct machine_ops* mop, struct emitter* e, struct frame* f );
+void load_frame_limit( struct machine_ops* mop, struct emitter* e, struct frame* f, int n );
 
 #endif 

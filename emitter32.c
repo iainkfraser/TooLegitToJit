@@ -176,7 +176,7 @@ static uint32_t find_local_label( struct emitter32* e, int pc, int local, bool i
 	if( isnext ){
 		list_for_each( seek , &e->local[ local ] ){
 			local_label* sll = list_entry( seek, local_label, link );	
-			if( pc <= sll->pc  )
+			if( pc < sll->pc  )
 				return sll->pc;
 			
 		}
