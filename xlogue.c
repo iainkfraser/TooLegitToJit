@@ -106,16 +106,16 @@ void prologue( struct machine_ops* mop, struct emitter* e, struct frame* f ){
 
 	// first things first sub stack
 	operand sp = OP_TARGETREG( f->m->sp );
-	// TODO: disable temps
+	bool prior = disable_spill( f->m );	
 	mop->add( e, f->m, sp, sp, OP_TARGETIMMED( -stack_frame_size( f->nr_locals ) ) ); 
-	// TODO: enable temps 
+	restore_spill( f->m, prior );
 
 	// get arg passing registers
 	operand rargs[ RA_COUNT ];
 	prefer_nontemp_acquire_reg( mop, e, f->m, RA_COUNT, rargs );
 
 	// do this first its very delicate 
-	if( f->nr_params >= 0 )			// TODO: obivously change to > 0 once intial testing done
+	if( f->nr_params > 0 )			// TODO: obivously change to > 0 once intial testing done
 		load_args( mop, e, f, rargs );
 
 	// store metaframe section
@@ -153,5 +153,35 @@ void epilogue( struct machine_ops* mop, struct emitter* e, struct frame* f ){
 	mop->add( e, f->m, sp, sp, OP_TARGETIMMED( stack_frame_size( f->nr_locals ) ) );
 
 	mop->ret( e, f->m );
+}
+
+
+void do_call( struct machine_ops* mop, struct emitter* e, struct frame* f, int vregbase, int narg, int nret ){
+	// new frame assumes no temporaries have been used yet 
+	assert( temps_accessed( f->m ) == 0 );
+	assert( RA_COUNT <= f->m->nr_reg );		// regargs are passed by register NOT stack
+
+	vreg_operand clive = vreg_to_operand( f, vregbase, false );
+ 	vreg_operand cstack = vreg_to_operand( f, vregbase, true );
+	assert( cstack.value.tag == OT_DIRECTADDR );
+
+	// TODO: verify its a closure 
+	
+	// get arg passing registers
+	operand rargs[ RA_COUNT ];
+	prefer_nontemp_acquire_reg( mop, e, f->m, RA_COUNT, rargs );
+
+	if( narg > 0 )
+		mop->move( e, f->m, rargs[ RA_NR_ARGS ], OP_TARGETIMMED( narg ) );
+
+	mop->move( e, f->m, rargs[ RA_CLOSURE ], clive.value );
+	mop->move( e, f->m, rargs[ RA_NR_RESULTS ], OP_TARGETIMMED( nret ) );
+
+	// calculate base address 
+	mop->add( e, f->m, rargs[ RA_BASE ], OP_TARGETREG( f->m->sp ), OP_TARGETIMMED( cstack.value.offset ) );
+	
+	
+
+	prefer_nontemp_release_reg( mop, e, f->m, RA_COUNT );
 }
 

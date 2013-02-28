@@ -17,6 +17,7 @@
 #include "emitter.h"
 #include "machine.h"
 #include "lopcodes.h"
+#include "xlogue.h"
 
 // Actual includes
 #include "frame.h"
@@ -183,44 +184,17 @@ void emit_closure( struct emitter** mce, struct machine_ops* mop, struct frame* 
 	loadim( mop, REF, f->m, TEMP_REG1, (uintptr_t)p->code_start );
 	mop->move(  REF, loperand_to_operand( f, dst ).value, src );
 #endif 
+
+	// temp - do proper work later
+	mop->move( REF, f->m, loperand_to_operand( f, dst ).value, OP_TARGETIMMED( (uintptr_t)p->code_start ) ); 
+
 }
 
 
 void emit_call( struct emitter** mce, struct machine_ops* mop, struct frame* f, loperand closure, int nr_params, int nr_results ){
 	assert( closure.islocal );
 
-	 struct emitter* me = REF;
-
-	// store live registers 
-	store_frame( mop, me, f );	
-
-	// load args
-	operand arg_clo = OP_TARGETREG( _a0 ); 
-	mop->move( REF, f->m, arg_clo, loperand_to_operand( f, closure ).value );	
-
-
-#if 0	// this way requires the function to know the nr_locals in this frame
-	loadim( REF, _a1, (uintptr_t)closure.index );
-#else
-	vreg_operand addr = llocal_to_stack_operand( f, closure.index ); 
-//	vreg_compiletime_stack_value( me->nr_locals, closure.index );
-#if 0
-	EMIT( MI_ADDIU( _a1, _sp, addr.value.offset ) );
-#endif
-#endif
-
-	if( nr_params > 0 )	// if zero returning function will load it 
-		loadim( mop, REF, f->m, _a2, (uintptr_t)nr_params - 1 );	 
-
-
-	loadim( mop, REF, f->m, _a3, (uintptr_t)nr_results );
-
-	// call
-#if 0
-	EMIT( MI_JALR( _a0 ) );
-	EMIT( MI_NOP() );
-#endif
-
-	// reload registers ( including constants ) 
-	load_frame( mop, me, f );
+	store_frame( mop, REF, f );	
+	do_call( mop, REF, f, closure.index, nr_params, nr_results );
+	load_frame( mop, REF, f );
 }
