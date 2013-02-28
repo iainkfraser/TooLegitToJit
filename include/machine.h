@@ -11,7 +11,7 @@
 #include "emitter.h"
 
 struct machine {
-	int 		sp;
+	int 		sp,fp;		// stack pointer and frame pointer 
 	int 		nr_reg;
 	int 		nr_temp_regs;  	// first NR_TEMP_REGS registers are temps the rest are used for locals and consts
 	bool		allow_spill;	// allow acquire_register to spill temp onto the stack  
@@ -34,6 +34,10 @@ struct machine_ops {
 	void (*bge)( struct emitter* me, struct machine* m, operand d, operand s, label l );
 	void (*call)( struct emitter* me, struct machine* m, operand fn );
 	void (*ret)( struct emitter* me, struct machine* m );
+
+	// optional instructions  
+	void (*push)( struct emitter* me, struct machine* m, operand s );
+	void (*pop)( struct emitter* me, struct machine* m, operand d );
 
 	void (*call_cfn)( struct emitter* me, struct machine* m, uintptr_t fn, size_t argsz );
 

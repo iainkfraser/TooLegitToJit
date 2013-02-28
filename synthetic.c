@@ -3,6 +3,7 @@
 * Sythentic generic machine instructions.
 */
 
+#include <stdarg.h>
 #include "emitter.h"
 #include "machine.h"
 
@@ -18,3 +19,20 @@ void loadim( struct machine_ops* mop, struct emitter* e, struct machine* m, int 
 	mop->move( e, m, r, v );
 }
 
+void pushn( struct machine_ops* mop, struct emitter* e, struct machine* m, int nr_operands, ... ){
+	va_list ap;
+	const operand stack = OP_TARGETREG( m->sp );
+
+	va_start( ap, nr_operands );
+
+	if( nr_operands == 1 && mop->push ){
+		mop->push( e, m, va_arg( ap, operand ) );
+	} else {
+		for( int i = 0; i < nr_operands; i++ )
+			mop->move( e, m, OP_TARGETDADDR( m->sp, -4 * ( i + 1 )	), va_arg( ap, operand ) );
+		
+		mop->add( e, m, stack, stack, OP_TARGETIMMED( -4 * nr_operands ) ); 
+	}
+
+	va_end( ap );
+}

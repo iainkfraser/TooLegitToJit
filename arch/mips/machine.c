@@ -14,9 +14,8 @@
 #include "arch/mips/opcodes.h"
 
 // use the sp variable in machine struct 
-#ifdef sp
 #undef sp
-#endif
+#undef fp
 
 struct machine_ops mips_ops;
 
@@ -283,6 +282,7 @@ struct machine_ops mips_ops = {
 
 struct machine mips_mach = {
 	.sp = _sp,
+	.fp = _fp,
 	.nr_reg = 18 + 4,
 	.nr_temp_regs = 4,
 	.reg = {
