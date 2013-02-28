@@ -29,7 +29,7 @@ void x_frame( struct machine_ops* mop, struct emitter* me, struct frame* f, bool
 			swap( d, s );
 				
 		for( int i = 0; i < 2; i++ ){
-			if( s.o[i].tag == OT_REG )
+			if( s.o[i].tag == OT_REG || d.o[i].tag == OT_REG )
 				mop->move( me, f->m, d.o[i], s.o[i] );
 		}
 

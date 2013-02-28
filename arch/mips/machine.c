@@ -213,9 +213,10 @@ static void bge( struct emitter* me, struct machine* m, operand d, operand s, la
 static void call( struct emitter* me, struct machine* m, operand fn ){
 	int temps = load_coregisters( _MOP, me, m, 1, &fn );
 
-	EMIT( MI_ADDIU( m->sp, m->sp, -4 ) );
+	EMIT( MI_SW( _ra, m->sp, -4 ) );		// DO NOT PUT in delay slot because ra already overwritten.
 	EMIT( MI_JALR( fn.reg ) );
-	EMIT( MI_SW( _ra, m->sp, 0 ) );		// delay slot dummy
+	EMIT( MI_ADDIU( m->sp, m->sp, -4 ) );	// delay slot
+	EMIT( MI_LW( _ra, m->sp, 0 ) );
 	EMIT( MI_ADDIU( m->sp, m->sp, 4 ) );
 
 	unload_coregisters( _MOP, me, m, temps );

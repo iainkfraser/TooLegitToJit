@@ -70,7 +70,7 @@ static operand pslot_to_operand( struct frame* f, int nr_locals, int pidx, bool 
 #if 0
 		operand r = OP_TARGETDADDR( f->m->sp, 4 * INVERSE( pidx,  2 * nr_locals ) );
 #else
-		operand r = OP_TARGETDADDR( f->m->fp, 4 + 4 * pidx );
+		operand r = OP_TARGETDADDR( f->m->fp, -(8 + 4 * pidx) );
 #endif
 		return r;
 	} else {

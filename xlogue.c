@@ -101,8 +101,8 @@ void copy_args( struct machine_ops* mop, struct emitter* e, struct frame* f, ope
 	restore_spill( f->m, prior );	
 
 	mop->move( e, f->m, iter, OP_TARGETIMMED( 0 ) );
-	mop->add( e, f->m, dst, fp, OP_TARGETIMMED( 4 ) );		// skip over closure 
-	mop->add( e, f->m, rargs[ RA_BASE ], rargs[ RA_BASE ], OP_TARGETIMMED( 8 ) );	// base should be +8 so skip over closure
+	mop->add( e, f->m, dst, fp, OP_TARGETIMMED( -8 ) );				// skip over stored base pointer 
+	mop->add( e, f->m, rargs[ RA_BASE ], rargs[ RA_BASE ], OP_TARGETIMMED( -8 ) );	// base should be +8 so skip over closure
 
 	e->ops->label_local( e, 0 );
 	mop->beq( e, f->m, iter, rargs[ RA_NR_ARGS ], LBL_NEXT( 0 ) );  
