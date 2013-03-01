@@ -10,5 +10,6 @@
 void epilogue( struct machine_ops* mop, struct emitter* e, struct frame* f );
 void prologue( struct machine_ops* mop, struct emitter* e, struct frame* f );
 void do_call( struct machine_ops* mop, struct emitter* e, struct frame* f, int vregbase, int narg, int nret );
+void do_ret( struct machine_ops* mop, struct emitter* e, struct frame* f, int vregbase, int nret );
 
 #endif

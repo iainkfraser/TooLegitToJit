@@ -91,6 +91,36 @@ void do_call( struct machine_ops* mop, struct emitter* e, struct frame* f, int v
 	caller_epilogue( mop, e, f, vregbase, narg, nret );
 }
 
+/*
+* Load the following and call epilogue:
+* 	r[ RA_NR_ARGS ] = number of results
+*	r[ RA_BASE ] = start address of results 
+*/
+void do_ret( struct machine_ops* mop, struct emitter* e, struct frame* f, int vregbase, int nret ){
+	assert( RA_COUNT <= f->m->nr_reg );	// regargs are passed by register NOT stack
+	vreg_operand basestack = vreg_to_operand( f, vregbase, true );
+
+	/*
+	* if nret == 0 then prev instruction was call and calls save vregs on stack. Therefore
+	* only when nret > 0 do we need to save live regs onto stack. Do it first so it can
+	* use as many temps as it wants before we reserve them for return procedure. 
+	*/
+	if( nret > 0 ) 
+		save_frame_limit( mop, e, f, vregbase, nret - 1 );
+
+	operand rargs[ RA_COUNT ];
+	prefer_nontemp_acquire_reg( mop, e, f->m, RA_COUNT, rargs );
+
+	if( nret > 0 ) {
+		mop->move( e, f->m, rargs[ RA_NR_ARGS ], OP_TARGETIMMED( nret - 1 ) );
+	} else {
+		; 	// TODO: calculate total results 
+	}
+
+	mop->add( e, f->m, rargs[ RA_BASE ], OP_TARGETREG( basestack.value.base ), OP_TARGETIMMED( basestack.value.offset ) );
+ 	mop->b( e, f->m, LBL_EC( f->epi ) ); 
+}
+
 void copy_args( struct machine_ops* mop, struct emitter* e, struct frame* f, operand rargs[ RA_COUNT ] ){
 	const operand fp = OP_TARGETREG( f->m->fp );
 
@@ -147,7 +177,7 @@ void prologue( struct machine_ops* mop, struct emitter* e, struct frame* f ){
 	if( f->nr_params ){
 		copy_args( mop, e, f, rargs );
 		// TODO: copy nil
-	 	load_frame_limit( mop, e, f, f->nr_params );	// load locals living in registers 
+	 	load_frame_limit( mop, e, f, 0, f->nr_params );	// load locals living in registers 
 	}
 
 	prefer_nontemp_release_reg( mop, e, f->m, RA_COUNT );
@@ -157,9 +187,6 @@ void epilogue( struct machine_ops* mop, struct emitter* e, struct frame* f ){
 	const operand sp = OP_TARGETREG( f->m->sp );
 	const operand fp = OP_TARGETREG( f->m->fp );
 
-	// TODO: colloborate with return,
-	//  1) assume the return call, has set the number of parameters returned 
-	//  2) set the base to fp + 4 
 
 	// reset stack 
 	mop->move( e, f->m, sp, fp );

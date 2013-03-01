@@ -27,16 +27,6 @@
 
 #define REF	( *( struct emitter**)mce ) 
 
-void emit_ret( struct emitter** mce, struct machine_ops* mop, struct frame* f ){
-#if 0
-	int j = ( REF->epi - ( REF->size + 1 ) ) / 4;	// branch is from delay slot
-	ENCODE_OP( REF, GEN_MIPS_OPCODE_2REG( MOP_BEQ, _zero, _zero, (int16_t)j ) );
-	ENCODE_OP( REF, MOP_NOP );
-#endif
- 	mop->b( REF, f->m, LBL_EC( f->epi ) ); 
-} 
-
-
 void emit_loadk( struct emitter** mce, struct machine_ops* mop, struct frame* f, int l, int k ){
 	assign( mop, REF, f->m, llocal_to_operand( f, l ), lconst_to_operand( f, k ) );
 }
@@ -198,3 +188,17 @@ void emit_call( struct emitter** mce, struct machine_ops* mop, struct frame* f, 
 	do_call( mop, REF, f, closure.index, nr_params, nr_results );
 	load_frame( mop, REF, f );
 }
+
+
+void emit_ret( struct emitter** mce, struct machine_ops* mop, struct frame* f, loperand base, int nr_results ){
+#if 0
+	int j = ( REF->epi - ( REF->size + 1 ) ) / 4;	// branch is from delay slot
+	ENCODE_OP( REF, GEN_MIPS_OPCODE_2REG( MOP_BEQ, _zero, _zero, (int16_t)j ) );
+	ENCODE_OP( REF, MOP_NOP );
+#endif
+	do_ret( mop, REF, f, base.index, nr_results );
+// 	mop->b( REF, f->m, LBL_EC( f->epi ) ); 
+} 
+
+
+

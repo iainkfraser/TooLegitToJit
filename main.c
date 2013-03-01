@@ -256,9 +256,6 @@ int load_code( FILE* f, struct proto* p, struct code_alloc* ca, struct machine* 
 					to_loperand( GETARG_B( ins ) ), 
 					to_loperand( GETARG_C( ins ) ) );
 				break;
-			case OP_RETURN:
-				emit_ret( &mce, mop, &fr );
-				break;
 			case OP_MOVE:
 				emit_move( &mce, mop, &fr, to_loperand( A ), 
 					to_loperand( GETARG_B( ins ) ) );
@@ -301,6 +298,9 @@ int load_code( FILE* f, struct proto* p, struct code_alloc* ca, struct machine* 
 			case OP_CALL:
 				emit_call( &mce, mop, &fr, to_loperand( A ), GETARG_B( ins ), 
 						GETARG_C( ins )	);
+				break;
+			case OP_RETURN:
+				emit_ret( &mce, mop, &fr, to_loperand( A ), GETARG_B( ins ) );
 				break;
 			default:
 				printf("%d\n", GET_OPCODE( ins ) );
