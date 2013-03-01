@@ -65,9 +65,11 @@ static void caller_prologue( struct machine_ops* mop, struct emitter* e, struct 
 	// calculate number of args
 	if( narg > 0 )
 		mop->move( e, f->m, rargs[ RA_NR_ARGS ], OP_TARGETIMMED( narg - 1 ) );
-	else
-		; 	// TODO: calculate total args by adding slots to start of base results 
-
+	else{
+		// calculate total by subtracting basereg address from stack.
+		mop->add( e, f->m, rargs[ RA_NR_ARGS ], OP_TARGETREG( f->m->fp ), OP_TARGETIMMED( 8 + 8 * vregbase ) );
+		mop->sub( e, f->m, rargs[ RA_NR_ARGS ], OP_TARGETREG( f->m->sp ), rargs[ RA_NR_ARGS ] );
+	}
 
 	// calcualte base address	
 	mop->add( e, f->m, rargs[ RA_BASE ], OP_TARGETREG( cstack.value.base ), OP_TARGETIMMED( cstack.value.offset ) );
@@ -109,9 +111,17 @@ static void caller_epilogue( struct machine_ops* mop, struct emitter* e, struct 
 		syn_memsetw( mop, e, f->m, dst, OP_TARGETIMMED( LUA_TNIL ), rargs[ RA_NR_ARGS ] );
 	} else {
 		assert( nret == 0 );
+		const operand sp = OP_TARGETREG( f->m->sp );
+		const operand fp = OP_TARGETREG( f->m->fp );
 
-		;// TODO: MEMCPY n args
-		;// TODO: inflate / deflate stack  	
+		// copy ALL the returned results 
+		mop->mul( e, f->m, rargs[ RA_NR_ARGS ], rargs[ RA_NR_ARGS ], OP_TARGETIMMED( 2 ) );	// type and value
+		syn_memcpyw( mop, e, f->m, dst, rargs[ RA_BASE ], rargs[ RA_NR_ARGS ] );
+	
+		// change stack pointer to reflect returned results 	
+		mop->mul( e, f->m, rargs[ RA_NR_ARGS ], rargs[ RA_NR_ARGS ], OP_TARGETIMMED( 4 ) );	// in word units
+		mop->add( e, f->m, rargs[ RA_NR_ARGS ], rargs[ RA_NR_ARGS ], OP_TARGETIMMED( 8 + 8 * vregbase ) );
+		mop->sub( e, f->m, sp, fp, rargs[ RA_NR_ARGS ] );	
 	}
 	
 	// release temps used in call
