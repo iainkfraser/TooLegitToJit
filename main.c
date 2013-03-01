@@ -426,6 +426,9 @@ int main( int argc, char* argv[] ){
 	extern struct machine mips_mach;
 	extern struct machine_ops mips_ops;
 
+	// force allow spill
+	mips_mach.allow_spill = true;
+
 	// init jit
 	do_cfail( validate_header( f ), "unacceptable header" );
 	do_cfail( load_function( f, &main, &ca, &mips_mach, &mips_ops ), "unable to load func" );

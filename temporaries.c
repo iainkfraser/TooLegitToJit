@@ -85,6 +85,21 @@ int temps_accessed( struct machine* m ){
 	return ( GET_REFCOUNT( m->reg[i] ) - 1 ) * m->nr_temp_regs + i + 1;
 }
 
+
+void release_tempn( struct machine_ops* mop, struct emitter* e, struct machine* m, int n ){
+	for( int i = 0; i < n; i++ )
+		release_temp( mop, e, m );
+}
+
+bool is_temp( struct machine* m, int reg ){
+	for( int i = 0; i < m->nr_temp_regs; i++ ){
+		if( GET_REG( m->reg[i] ) == reg )
+			return true;
+	}
+	
+	return false;
+}
+
 /*
 * Spill toggle 
 */

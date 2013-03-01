@@ -14,6 +14,11 @@ void loadim( struct machine_ops* mop, struct emitter* e, struct machine* m, int 
 void pushn( struct machine_ops* mop, struct emitter* e, struct machine* m, int nr_operands, ... );
 void popn( struct machine_ops* mop, struct emitter* e, struct machine* m, int nr_operands, ... );
 
+void syn_memcpyw( struct machine_ops* mop, struct emitter* e, struct machine* m, operand d, operand s, operand size );
+void syn_memsetw( struct machine_ops* mop, struct emitter* e, struct machine* m, operand d, operand v, operand size );
+void syn_min( struct machine_ops* mop, struct emitter* e, struct machine *m, operand d, operand s, operand t );
+void syn_max( struct machine_ops* mop, struct emitter* e, struct machine *m, operand d, operand s, operand t );
+
 #define push( mop, e, m, s )	pushn( mop, e, m, 1, s )
 #define pop( mop, e, m, s )	popn( mop, e, m, 1, s )
 #endif

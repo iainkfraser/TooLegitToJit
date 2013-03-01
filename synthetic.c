@@ -54,3 +54,81 @@ void popn( struct machine_ops* mop, struct emitter* e, struct machine* m, int nr
 
 	va_end( ap );
 }
+
+
+// this function could be inline
+void syn_memcpyw( struct machine_ops* mop, struct emitter* e, struct machine* m, operand d, operand s, operand size ){
+	operand iter = OP_TARGETREG( acquire_temp( mop, e, m ) );			
+	operand src = OP_TARGETREG( acquire_temp( mop, e, m ) );
+	operand dst = OP_TARGETREG( acquire_temp( mop, e, m ) );
+
+	// init iterator
+	mop->move( e, m, iter, OP_TARGETIMMED( 0 ) );
+	mop->move( e, m, src, s );
+	mop->move( e, m, dst, d );
+	
+	// start loop 
+	e->ops->label_local( e, 0 );
+	mop->beq( e, m, iter, size, LBL_NEXT( 0 ) );  
+
+	// copy 
+	mop->move( e, m, OP_TARGETDADDR( dst.reg, 0 ), OP_TARGETDADDR( src.reg, 0 ) );
+	
+	// update pointers 
+	mop->add( e, m, dst, dst, OP_TARGETIMMED( 4 ) );
+	mop->add( e, m, src, src, OP_TARGETIMMED( 4 ) ); 
+	
+	// update iterator
+	mop->add( e, m, iter, iter, OP_TARGETIMMED( 1 ) );
+	
+	mop->b( e, m, LBL_PREV( 0 ) );
+	e->ops->label_local( e, 0 );
+	
+	release_tempn( mop, e, m, 3 );
+}
+
+void syn_memsetw( struct machine_ops* mop, struct emitter* e, struct machine* m, operand d, operand v, operand size ){
+	operand iter = OP_TARGETREG( acquire_temp( mop, e, m ) );			
+	operand dst = OP_TARGETREG( acquire_temp( mop, e, m ) );
+
+	// init iterator
+	mop->move( e, m, iter, OP_TARGETIMMED( 0 ) );
+	mop->move( e, m, dst, d );
+	
+	// start loop 
+	e->ops->label_local( e, 0 );
+	mop->beq( e, m, iter, size, LBL_NEXT( 0 ) );  
+
+	// copy 
+	mop->move( e, m, OP_TARGETDADDR( dst.reg, 0 ), v );
+	
+	// update pointers 
+	mop->add( e, m, dst, dst, OP_TARGETIMMED( 4 ) );
+	
+	// update iterator
+	mop->add( e, m, iter, iter, OP_TARGETIMMED( 1 ) );
+	
+	mop->b( e, m, LBL_PREV( 0 ) );
+	e->ops->label_local( e, 0 );
+	
+	release_tempn( mop, e, m, 2 );
+}
+
+void syn_min( struct machine_ops* mop, struct emitter* e, struct machine* m, operand d, operand s, operand t ){
+	mop->blt( e, m, s, t, LBL_NEXT( 0 ) );
+	mop->move( e, m, d, t );
+	mop->b( e, m, LBL_NEXT( 1 ) );
+	e->ops->label_local( e, 0 );
+	mop->move( e, m, d, s );
+	e->ops->label_local( e, 1 );
+}
+
+void syn_max( struct machine_ops* mop, struct emitter* e, struct machine* m, operand d, operand s, operand t ){
+	mop->blt( e, m, s, t, LBL_NEXT( 0 ) );
+	mop->move( e, m, d, t );
+	mop->b( e, m, LBL_NEXT( 1 ) );
+	e->ops->label_local( e, 0 );
+	mop->move( e, m, d, s );
+	e->ops->label_local( e, 1 );
+}
+

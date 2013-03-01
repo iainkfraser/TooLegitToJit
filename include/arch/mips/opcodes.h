@@ -118,6 +118,7 @@
 #define MI_ADDU( rd, rs, rt )	GEN_MIPS_OPCODE_3REG( MOP_SPECIAL, rs, rt, rd, MOP_SPECIAL_ADDU ) 
 #define MI_B( off )		GEN_MIPS_OPCODE_2REG( MOP_BEQ, 0, 0, off )
 #define MI_BEQ( rs, rt, off )	GEN_MIPS_OPCODE_2REG( MOP_BEQ, rs, rt, off )
+#define MI_BLTZ( rs, off )	GEN_MIPS_OPCODE_2REG( MOP_BLTZ, rs, 0, off )
 #define MI_BGEZ( rs, off )	GEN_MIPS_OPCODE_2REG( 1, rs, MOP_BGEZ, off ) 
 #define MI_BGTZ( rs, off )	GEN_MIPS_OPCODE_2REG( MOP_BGTZ, rs, 0, off )
 #define MI_JALR( rs )		GEN_MIPS_OPCODE_3REG( MOP_SPECIAL, rs, _zero, _ra, MOP_SPECIAL_JALR )

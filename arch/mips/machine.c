@@ -65,13 +65,26 @@ static void loadreg( struct emitter* me, operand* d, int temp_reg, bool forcereg
 
 static void move( struct emitter* me, struct machine* m, operand d, operand s ){
 	assert( d.tag == OT_REG || d.tag == OT_DIRECTADDR );	
+	int reg;
+	bool istemp = false;
 
-	int reg = d.tag == OT_REG ? d.reg : acquire_temp( _MOP, me, m ); 
-	loadreg( me, &s, reg, d.tag == OT_REG );
+	if( d.tag == OT_REG )
+		reg = d.reg;
+	else if( s.tag == OT_REG )
+		reg = s.reg;
+	else {
+		reg = acquire_temp( _MOP, me, m );
+		istemp = true;
+	}
+
+	loadreg( me, &s, reg, d.tag == OT_REG && s.tag == OT_REG );
 
 	if( d.tag == OT_DIRECTADDR ){		// | sw reg, d.addr 
-		ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( MOP_SW, d.base, s.reg, d.offset ) );
-		release_temp( _MOP, me, m );
+		EMIT( MI_SW( reg, d.base, d.offset ) );
+
+		// NOT strong enough to veriy it was loaded in this function	
+		if( istemp )	
+			release_temp( _MOP, me, m );
 	}
 }
 
@@ -178,7 +191,15 @@ static void beq( struct emitter* me, struct machine* m, operand d, operand s, la
 }
 
 static void blt( struct emitter* me, struct machine* m, operand d, operand s, label l ){
-	;
+	operand otemp = OP_TARGETREG( acquire_temp( _MOP, me, m ) );
+	assert( otemp.tag == OT_REG );
+
+	sub( me, m, otemp, d, s );
+	
+	EMIT( MI_BLTZ( otemp.reg, branch( me, l ) ) );
+	EMIT( MI_NOP( ) );
+
+	release_temp( _MOP, me, m );
 }
 
 static void bgt( struct emitter* me, struct machine* m, operand d, operand s, label l ){

@@ -47,7 +47,7 @@ static void prefer_nontemp_release_reg( struct machine_ops* mop, struct emitter*
 enum REGARGS { RA_NR_ARGS, RA_BASE, RA_COUNT };
 
 
-static void caller_prologue( struct machine_ops* mop, struct emitter* e, struct frame* f, int vregbase, int narg, int nreg ){
+static void caller_prologue( struct machine_ops* mop, struct emitter* e, struct frame* f, int vregbase, int narg, int nret ){
 	// new frame assumes no temporaries have been used yet 
 	assert( temps_accessed( f->m ) == 0 );
 	assert( RA_COUNT + 1 <= f->m->nr_reg );		// regargs are passed by register NOT stack
@@ -81,9 +81,42 @@ static void caller_prologue( struct machine_ops* mop, struct emitter* e, struct 
 	prefer_nontemp_release_reg( mop, e, f->m, RA_COUNT );
 }
 
-static void caller_epilogue( struct machine_ops* mop, struct emitter* e, struct frame* f, int vregbase, int narg, int nreg ){
-	// TODO: load resslts intto position
-	// TODO: inflate / deflate stack  	
+static void caller_epilogue( struct machine_ops* mop, struct emitter* e, struct frame* f, int vregbase, int narg, int nret ){
+ 	vreg_operand basestack = vreg_to_operand( f, vregbase, true );
+	
+	operand rargs[ RA_COUNT ];
+	prefer_nontemp_acquire_reg( mop, e, f->m, RA_COUNT, rargs );
+	
+	// get destination pointer 
+	operand dst = OP_TARGETREG( acquire_temp( mop, e, f->m ) );
+	mop->add( e, f->m, dst, OP_TARGETREG( basestack.value.base ), OP_TARGETIMMED( basestack.value.offset ) );		
+	
+	if( nret > 0 ){
+		nret = nret - 1;
+
+		syn_min( mop, e, f->m, rargs[ RA_NR_ARGS], rargs[ RA_NR_ARGS ], OP_TARGETIMMED( nret ) );
+		mop->mul( e, f->m, rargs[ RA_NR_ARGS ], rargs[ RA_NR_ARGS ], OP_TARGETIMMED( 2 ) );
+		syn_memcpyw( mop, e, f->m, dst, rargs[ RA_BASE ], rargs[ RA_NR_ARGS ] );
+		
+		// update pointers to after memcpy location
+		mop->mul( e, f->m, rargs[ RA_NR_ARGS ], rargs[ RA_NR_ARGS ], OP_TARGETIMMED( 2 ) );
+		mop->add( e, f->m, rargs[ RA_BASE ], rargs[ RA_BASE ], rargs[ RA_NR_ARGS ] );
+		mop->add( e, f->m, dst, dst, rargs[ RA_NR_ARGS] );	
+		mop->div( e, f->m, rargs[ RA_NR_ARGS ], rargs[ RA_NR_ARGS ], OP_TARGETIMMED( 2 ) );
+		
+		// memset nil ( don't worry about writing value, its ignored when nil )
+		mop->sub( e, f->m, rargs[ RA_NR_ARGS ], rargs[ RA_NR_ARGS ], OP_TARGETIMMED( nret * 2 ) );	
+		syn_memsetw( mop, e, f->m, dst, OP_TARGETIMMED( LUA_TNIL ), rargs[ RA_NR_ARGS ] );
+	} else {
+		assert( nret == 0 );
+
+		;// TODO: MEMCPY n args
+		;// TODO: inflate / deflate stack  	
+	}
+	
+	// release temps used in call
+	release_temp( mop, e, f->m );
+	prefer_nontemp_release_reg( mop, e, f->m, RA_COUNT );
 }
 
 void do_call( struct machine_ops* mop, struct emitter* e, struct frame* f, int vregbase, int narg, int nret ){
