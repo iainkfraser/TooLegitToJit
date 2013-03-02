@@ -6,7 +6,7 @@
 
 #include "instruction.h"
 #include "operand.h"
-
+#include "lopcodes.h"
 
 vreg_operand llocal_to_stack_operand( struct frame* f, int vreg ){
 	return vreg_to_operand( f, vreg, true ); 

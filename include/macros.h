@@ -26,5 +26,7 @@
 #define swap(a, b) \
          do { typeof(a) __tmp = (a); (a) = (b); (b) = __tmp; } while (0)
 
+#define safe_free( x )	do{ if( (x) ) free( (x) ); } while( 0 )
+
 #endif
 

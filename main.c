@@ -23,7 +23,7 @@
 #include "instruction.h"
 #include "user_memory.h"
 #include "list.h"
-#include "math_util.h"
+#include "macros.h"
 
 
 
@@ -429,7 +429,8 @@ int main( int argc, char* argv[] ){
 	// force allow spill
 	mips_mach.allow_spill = true;
 
-	// init jit
+	// create jit functions 
+
 	do_cfail( validate_header( f ), "unacceptable header" );
 	do_cfail( load_function( f, &main, &ca, &mips_mach, &mips_ops ), "unable to load func" );
 

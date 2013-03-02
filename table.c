@@ -2,6 +2,7 @@
 * (C) Iain Fraser - GPLv3
 */ 
 
+#include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <stddef.h>

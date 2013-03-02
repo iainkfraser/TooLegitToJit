@@ -6,7 +6,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-#include "math_util.h"
+#include "macros.h"
 #include "operand.h"
 #include "stack.h"
 #include "frame.h"

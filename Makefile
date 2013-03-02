@@ -1,6 +1,11 @@
 #CC := mipsel-openwrt-linux-gcc
 CFLAGS := -I include -std=gnu99 -g3 -MD -MP -Werror 
-OBJECTS := temporaries.o emitter32.o frame.o instruction.o synthetic.o main.o table.o func.o operand.o stack.o xlogue.o 
+
+# arch independent 
+OBJECTS := jitfunc.o temporaries.o emitter32.o frame.o instruction.o synthetic.o 
+OBJECTS += main.o table.o func.o operand.o stack.o xlogue.o 
+
+# arch dependent
 OBJECTS += arch/mips/vstack.o arch/mips/vconsts.o 
 OBJECTS += arch/mips/machine.o
 
