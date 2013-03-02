@@ -47,7 +47,7 @@ static void prefer_nontemp_release_reg( struct machine_ops* mop, struct emitter*
 enum REGARGS { RA_NR_ARGS, RA_BASE, RA_COUNT };
 
 
-static void caller_prologue( struct machine_ops* mop, struct emitter* e, struct frame* f, int vregbase, int narg, int nret ){
+static void precall( struct machine_ops* mop, struct emitter* e, struct frame* f, int vregbase, int narg, int nret ){
 	// new frame assumes no temporaries have been used yet 
 	assert( temps_accessed( f->m ) == 0 );
 	assert( RA_COUNT + 1 <= f->m->nr_reg );		// regargs are passed by register NOT stack
@@ -86,7 +86,7 @@ static void caller_prologue( struct machine_ops* mop, struct emitter* e, struct 
 	prefer_nontemp_release_reg( mop, e, f->m, RA_COUNT );
 }
 
-static void caller_epilogue( struct machine_ops* mop, struct emitter* e, struct frame* f, int vregbase, int narg, int nret ){
+static void postcall( struct machine_ops* mop, struct emitter* e, struct frame* f, int vregbase, int narg, int nret ){
  	vreg_operand basestack = vreg_to_operand( f, vregbase, true );
 	
 	operand rargs[ RA_COUNT ];
@@ -133,8 +133,8 @@ static void caller_epilogue( struct machine_ops* mop, struct emitter* e, struct 
 }
 
 void do_call( struct machine_ops* mop, struct emitter* e, struct frame* f, int vregbase, int narg, int nret ){
-	caller_prologue( mop, e, f, vregbase, narg, nret );
-	caller_epilogue( mop, e, f, vregbase, narg, nret );
+	precall( mop, e, f, vregbase, narg, nret );
+	postcall( mop, e, f, vregbase, narg, nret );
 }
 
 /*
