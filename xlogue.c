@@ -149,7 +149,7 @@ void do_ret( struct machine_ops* mop, struct emitter* e, struct frame* f, int vr
 	* use as many temps as it wants before we reserve them for return procedure. 
 	*/
 	if( nret > 0 ) 
-		save_frame_limit( mop, e, f, vregbase, nret - 1 );
+		save_frame_limit( mop, e, f, vregbase, nret - 1 );	// NOT SIZE BUT LAST
 
 	operand rargs[ RA_COUNT ];
 	prefer_nontemp_acquire_reg( mop, e, f->m, RA_COUNT, rargs );

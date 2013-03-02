@@ -20,6 +20,7 @@ void x_frame( struct machine_ops* mop, struct emitter* me, struct frame* f, bool
 	vreg_operand s,d;
 	
 	const int nr_locals = f->nr_locals; 
+	n += off;
 
 	for( int i = off; i < n; i++ ){
 		d = vreg_to_operand( f, i, true );
