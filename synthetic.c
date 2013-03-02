@@ -75,8 +75,8 @@ void syn_memcpyw( struct machine_ops* mop, struct emitter* e, struct machine* m,
 	mop->move( e, m, OP_TARGETDADDR( dst.reg, 0 ), OP_TARGETDADDR( src.reg, 0 ) );
 	
 	// update pointers 
-	mop->add( e, m, dst, dst, OP_TARGETIMMED( 4 ) );
-	mop->add( e, m, src, src, OP_TARGETIMMED( 4 ) ); 
+	mop->add( e, m, dst, dst, OP_TARGETIMMED( -4 ) );	// TODO: this is incorrect in general but correct for copyargs
+	mop->add( e, m, src, src, OP_TARGETIMMED( -4 ) ); 
 	
 	// update iterator
 	mop->add( e, m, iter, iter, OP_TARGETIMMED( 1 ) );

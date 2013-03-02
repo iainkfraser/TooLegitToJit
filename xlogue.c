@@ -67,8 +67,11 @@ static void caller_prologue( struct machine_ops* mop, struct emitter* e, struct 
 		mop->move( e, f->m, rargs[ RA_NR_ARGS ], OP_TARGETIMMED( narg - 1 ) );
 	else{
 		// calculate total by subtracting basereg address from stack.
-		mop->add( e, f->m, rargs[ RA_NR_ARGS ], OP_TARGETREG( f->m->fp ), OP_TARGETIMMED( 8 + 8 * vregbase ) );
-		mop->sub( e, f->m, rargs[ RA_NR_ARGS ], OP_TARGETREG( f->m->sp ), rargs[ RA_NR_ARGS ] );
+
+		// 2 becuase 8 for (ebp,closure) another 8 for the function being called ( rem actual args = args - 1 )
+		mop->add( e, f->m, rargs[ RA_NR_ARGS ], OP_TARGETREG( f->m->fp ), OP_TARGETIMMED( -8 * ( 2 + vregbase ) ) );
+		mop->sub( e, f->m, rargs[ RA_NR_ARGS ], rargs[ RA_NR_ARGS ], OP_TARGETREG( f->m->sp ) );	
+		mop->div( e, f->m, rargs[ RA_NR_ARGS ], rargs[ RA_NR_ARGS ], OP_TARGETIMMED( 8 ) );
 	}
 
 	// calcualte base address	
@@ -185,8 +188,8 @@ void copy_args( struct machine_ops* mop, struct emitter* e, struct frame* f, ope
 	mop->move( e, f->m, OP_TARGETDADDR( dst.reg, 4 ), OP_TARGETDADDR( rargs[ RA_BASE ].reg, 4 ) );
 	
 	// update pointers 
-	mop->add( e, f->m, rargs[ RA_BASE ], rargs[ RA_BASE ], OP_TARGETIMMED( 8 ) );
-	mop->add( e, f->m, dst, dst, OP_TARGETIMMED( 8 ) ); 
+	mop->add( e, f->m, rargs[ RA_BASE ], rargs[ RA_BASE ], OP_TARGETIMMED( -8 ) );
+	mop->add( e, f->m, dst, dst, OP_TARGETIMMED( -8 ) ); 
 	
 	// update iterator
 	mop->add( e, f->m, iter, iter, OP_TARGETIMMED( 1 ) );
