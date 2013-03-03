@@ -242,105 +242,53 @@ void epilogue( struct machine_ops* mop, struct emitter* e, struct frame* f ){
 }
 
 /*
-* Generate JFunction for copying arguments and results. Spills must be minimized
-* to stop clobbering the previous frames locals.
+* Generate JFunction for copying arguments and results 
 */
 
 enum { RA_DST, RA_SRC, RA_EXIST, RA_EXPECT, RA_SIZE };
 
-static void do_copying( struct machine_ops* mop, struct emitter* e, struct machine* m, 
-		operand iter, operand limit, operand dst, operand src ){
-
-	// start loop 
-	e->ops->label_local( e, 0 );
-	mop->beq( e, m, iter, limit, LBL_NEXT( 0 ) ); 	// TODO: bgt is equiv to beq so swap? 
-
-	// copy 
-	mop->move( e, m, OP_TARGETDADDR( dst.reg, 0 ), OP_TARGETDADDR( src.reg, 0 ) );
-	mop->move( e, m, OP_TARGETDADDR( dst.reg, -4 ), OP_TARGETDADDR( src.reg, -4 ) );
-	
-	// update pointers 
-	mop->add( e, m, dst, dst, OP_TARGETIMMED( -8 ) );	
-	mop->add( e, m, src, src, OP_TARGETIMMED( -8 ) ); 
-	
-	// update iterator
-	mop->add( e, m, iter, iter, OP_TARGETIMMED( 1 ) );
-	
-	mop->b( e, m, LBL_PREV( 0 ) );
-	e->ops->label_local( e, 0 );
-}
-
-static void do_niling( struct machine_ops* mop, struct emitter* e, struct machine* m, 
-		operand iter, operand limit, operand dst, operand src ){
-
-	// start loop 
-	e->ops->label_local( e, 0 );
-	mop->beq( e, m, iter, limit, LBL_NEXT( 0 ) ); 	// TODO: bgt is equiv to beq so swap? 
-
-	// copy 
-	mop->move( e, m, OP_TARGETDADDR( dst.reg, 0 ), OP_TARGETDADDR( src.reg, 0 ) );
-	mop->move( e, m, OP_TARGETDADDR( dst.reg, -4 ), OP_TARGETDADDR( src.reg, -4 ) );
-	
-	// update pointers 
-	mop->add( e, m, dst, dst, OP_TARGETIMMED( -8 ) );	
-	mop->add( e, m, src, src, OP_TARGETIMMED( -8 ) ); 
-	
-	// update iterator
-	mop->add( e, m, iter, iter, OP_TARGETIMMED( 1 ) );
-	
-	mop->b( e, m, LBL_PREV( 0 ) );
-	e->ops->label_local( e, 0 );
-}
-
-static void do_nilling( struct machine_ops* mop, struct emitter* e, struct machine* m, 
-		operand iter, operand limit, operand dst ){
-
-	// start loop 
-	e->ops->label_local( e, 0 );
-	mop->beq( e, m, iter, limit, LBL_NEXT( 0 ) ); 	// TODO: bgt is equiv to beq so swap? 
-
-	// copy 
-	mop->move( e, m, OP_TARGETDADDR( dst.reg, -4 ), OP_TARGETIMMED( LUA_TNIL ) );
-	
-	// update pointers 
-	mop->add( e, m, dst, dst, OP_TARGETIMMED( -8 ) );	
-	
-	// update iterator
-	mop->add( e, m, iter, iter, OP_TARGETIMMED( 1 ) );
-	
-	mop->b( e, m, LBL_PREV( 0 ) );
-	e->ops->label_local( e, 0 );
-}
-
 void jinit_cpy_arg_res( struct JFunc* jf, struct machine_ops* mop, struct emitter* e, struct machine* m ){
-	return;
 	operand rargs[ RA_SIZE ];
 	prefer_nontemp_acquire_reg( mop, e, m, RA_SIZE, rargs );
 
-	syn_min( mop, e, m, rargs[ RA_EXIST ], rargs[ RA_EXIST ], rargs[ RA_EXPECT ] );
+	syn_min( mop, e, f->m, rargs[ RA_EXIST ], rargs[ RA_SIZE ], OP_TARGETIMMED( nret ) );
 	
-	// init iterator 
 	operand iter = OP_TARGETREG( acquire_temp( mop, e, m ) );			
+
+	// init iterator
 	mop->move( e, m, iter, OP_TARGETIMMED( 0 ) );
 	
-	do_copying( mop, e, m, iter, rargs[ RA_EXIST ], rargs[ RA_DST ], rargs[ RA_SRC ] );
+	// start loop 
+	e->ops->label_local( e, 0 );
+	mop->beq( e, m, iter, size, LBL_NEXT( 0 ) );  
+
+	// copy 
+	mop->move( e, m, OP_TARGETDADDR( dst.reg, 0 ), OP_TARGETDADDR( src.reg, 0 ) );
 	
-	/* 
-	* TODO: Below logic is incorrect the first is most likely to get spilled. So change enum order. BUT 
-	* then you have to think about prefer saved reg and the order there.
-	* TODO: add error prefer_nontemps to error when not all live simultenously 
-	*
-	* RA_EXPECT is last register therefore its the most likely to be spilled. So to stop repeat
-	* spill/unspill move it to exist.
-	*/
-	mop->move( e, m, rargs[ RA_SIZE ], rargs[ RA_EXIST ] );
-	do_nilling( mop, e, m, iter, rargs[ RA_EXIST ], rargs[ RA_DST ] );
+	// update pointers 
+	mop->add( e, m, dst, dst, OP_TARGETIMMED( -4 ) );	// TODO: this is incorrect in general but correct for copyargs
+	mop->add( e, m, src, src, OP_TARGETIMMED( -4 ) ); 
+	
+	// update iterator
+	mop->add( e, m, iter, iter, OP_TARGETIMMED( 1 ) );
+	
+	mop->b( e, m, LBL_PREV( 0 ) );
+	e->ops->label_local( e, 0 );
+	
+	release_tempn( mop, e, m, 3 );
 
-	release_temp( mop, e, m );	
-	prefer_nontemp_release_reg( mop, e, m, RA_SIZE );
 
-	mop->ret( e, m );
 }
+
+/*
+* TODO:
+*	- track registers clobbered
+*		- non temporaries
+*		- temporaries
+*	- track stack spill
+*	- write code
+*/
+
 
 #if 0		// doesn't work because return address will overwrite and some arch ( ahem! x86 ) haven no alternatives 
 

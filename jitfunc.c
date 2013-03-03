@@ -8,32 +8,57 @@
 #include "jitfunc.h"
 #include "macros.h"
 
-static struct JFunc jit_functions[ JF_COUNT ];
+extern void jinit_cpy_arg_res( struct JFunc* jf, struct machine_ops* mop, struct emitter* e, struct machine* m );
 
-struct emitter* jfuncs_create( struct machine* m, struct machine_ops* mop ){
+static struct JFunc jit_functions[ JF_COUNT ];
+static char* jfuncs_code;
+static jf_init jinittable[ JF_COUNT ] = {
+	[ JF_ARG_RES_CPY ] = &jinit_cpy_arg_res 
+}; 
+
+
+
+struct emitter* jfuncs_init( struct machine_ops* mop, struct machine* m ){
 	struct emitter* e;
+	struct JFunc *j = jit_functions;
+
 	mop->create_emitter( &e, 0 );
+
+	for( int i = 0; i < JF_COUNT; i++ ){
+		j->addr = e->ops->ec( e );
+	
+		assert( temps_accessed( m ) == 0 );
+		m->max_access =  0;
+
+		( jinittable[i] )( j, mop, e, m );
+
+		j->temp_clobber = m->max_access;
+	}
 
 	return e;
 }
 
-struct JFunc* jfuncs_get( int idx ){
+void jfuncs_cleanup(){
+	struct JFunc *j = jit_functions;
+	;
+}
+
+void jfuncs_setsection( void* section ){
+	jfuncs_code = (char*)section;
+}
+
+static inline struct JFunc* jfuncs_get( int idx ){
 	return &jit_functions[ idx ];
 }
 
-void jfuncs_cleanup(){
-	struct JFunc *j = jit_functions;
-
-	for( int i = 0; i < JF_COUNT; i++, j++ ){
-		safe_free( j->params );
-		safe_free( j->cregs );
-	}
-
+void* jfuncs_addr( struct machine* m, int idx ){
+	jfuncs_get( idx )->addr + jfuncs_get( idx )->addr; 
 }
 
-/*
-* Thoughts:
-*	Jumptable for func generators
-*	All in one huge chunk of memory
-*	No pc labels 
-*/
+int jfuncs_temp_clobber( struct machine* m, int idx ){
+	min( jfuncs_get( idx )->temp_clobber, m->nr_temp_regs );
+}
+
+int jfuncs_stack_clobber( struct machine* m, int idx ){
+	return max( jfuncs_get( idx )->temp_clobber - m->nr_temp_regs, 0 );
+}

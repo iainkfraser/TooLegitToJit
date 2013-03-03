@@ -24,7 +24,7 @@
 #include "user_memory.h"
 #include "list.h"
 #include "macros.h"
-
+#include "jitfunc.h"
 
 
 struct code_alloc {
@@ -430,7 +430,17 @@ int main( int argc, char* argv[] ){
 	mips_mach.allow_spill = true;
 
 	// create jit functions 
-
+	struct emitter* e = jfuncs_init( &mips_ops, &mips_mach );
+	int sizemcode = e->ops->link( e );
+	void* jitfuncs = ca.alloc( sizemcode );
+	if( !jitfuncs )
+		assert( 0 );	
+	e->ops->stop( e, jitfuncs, 0 );
+	if( ca.execperm )
+		ca.execperm( jitfuncs, sizemcode );
+	jfuncs_setsection( jitfuncs );
+	
+	// verify header and perform JIT  
 	do_cfail( validate_header( f ), "unacceptable header" );
 	do_cfail( load_function( f, &main, &ca, &mips_mach, &mips_ops ), "unable to load func" );
 
@@ -439,7 +449,10 @@ int main( int argc, char* argv[] ){
 	else
 		serialise( &main, out );	
 
+	// cleanup
+	ca.free( jitfuncs, sizemcode );
 	cleanup( &main, &ca );
+
 exit:
 	if( f )	fclose( f );
 	return 0;
