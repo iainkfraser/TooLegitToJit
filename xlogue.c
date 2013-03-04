@@ -46,7 +46,8 @@ static void prefer_nontemp_release_reg( struct machine_ops* mop, struct emitter*
 
 // in order of nontemporary register assignment priority 
 enum REGARGS { RA_NR_ARGS, RA_BASE, RA_COUNT };
-
+//enum { RA_DST, RA_SRC, RA_EXIST, RA_EXPECT, RA_SIZE };
+enum { RA_EXIST, RA_SRC, RA_DST, RA_EXPECT, RA_SIZE };
 
 static void precall( struct machine_ops* mop, struct emitter* e, struct frame* f, int vregbase, int narg, int nret ){
 	// new frame assumes no temporaries have been used yet 
@@ -89,7 +90,35 @@ static void precall( struct machine_ops* mop, struct emitter* e, struct frame* f
 
 static void postcall( struct machine_ops* mop, struct emitter* e, struct frame* f, int vregbase, int narg, int nret ){
  	vreg_operand basestack = vreg_to_operand( f, vregbase, true );
-	
+#if 1	
+	operand rargs[ RA_SIZE ];
+	prefer_nontemp_acquire_reg( mop, e, f->m, RA_SIZE, rargs );
+
+	// max stack clobber 
+	const int maxstack = 3;	// prior frame has buffer of pushed return addr, frame pointer and closure
+
+	// set dst and expect
+	mop->add( e, f->m, rargs[ RA_DST ], OP_TARGETREG( basestack.value.base ), OP_TARGETIMMED( basestack.value.offset ) );
+
+	if( nret == 0 ){
+		// set exist 	
+		mop->move( e, f->m, rargs[ RA_EXPECT ], rargs[ RA_EXIST ] );
+		
+		// update stack position 
+		mop->mul( e, f->m, rargs[ RA_NR_ARGS ], rargs[ RA_NR_ARGS ], OP_TARGETIMMED( 8 ) );	// in word units
+		mop->add( e, f->m, rargs[ RA_NR_ARGS ], rargs[ RA_NR_ARGS ], OP_TARGETIMMED( 8 + 8 * vregbase ) );
+		mop->sub( e, f->m, OP_TARGETREG( f->m->sp ), OP_TARGETREG( f->m->fp ), rargs[ RA_NR_ARGS ] );
+
+		mop->move( e, f->m, rargs[ RA_EXIST ], rargs[ RA_EXPECT ]  );	
+	} else {
+		mop->move( e, f->m, rargs[ RA_EXPECT ], OP_TARGETIMMED( nret - 1 ) );
+	}
+
+
+	jfunc_call( mop, e, f->m, JF_ARG_RES_CPY, maxstack, 4, rargs[ RA_SRC ], rargs[ RA_DST ], 
+						rargs[ RA_EXPECT ], rargs[ RA_EXIST ] );
+	prefer_nontemp_release_reg( mop, e, f->m, RA_SIZE );
+#else
 	operand rargs[ RA_COUNT ];
 	prefer_nontemp_acquire_reg( mop, e, f->m, RA_COUNT, rargs );
 	
@@ -131,6 +160,7 @@ static void postcall( struct machine_ops* mop, struct emitter* e, struct frame* 
 	// release temps used in call
 	release_temp( mop, e, f->m );
 	prefer_nontemp_release_reg( mop, e, f->m, RA_COUNT );
+#endif 
 }
 
 void do_call( struct machine_ops* mop, struct emitter* e, struct frame* f, int vregbase, int narg, int nret ){
@@ -209,7 +239,37 @@ void prologue( struct machine_ops* mop, struct emitter* e, struct frame* f ){
 
 	const operand sp = OP_TARGETREG( f->m->sp );
 	const operand fp = OP_TARGETREG( f->m->fp );
+#if 1
+	const int nparams = f->nr_params;
+	
+	operand rargs[ RA_SIZE ];
+	prefer_nontemp_acquire_reg( mop, e, f->m, RA_SIZE, rargs );
 
+	// push old frame pointer, closure addr / result start addr, expected nr or results 
+	pushn( mop, e, f->m, 2, fp, rargs[ RA_SRC ] ); 
+	
+	// set ebp and update stack
+	mop->add( e, f->m, fp, sp, OP_TARGETIMMED( 4 ) );	// point to ebp so add 4 
+	mop->add( e, f->m, sp, sp, OP_TARGETIMMED( -( 8 * f->nr_locals ) ) );
+
+	if( nparams ) {
+		const vreg_operand basestack = vreg_to_operand( f, 0, true );		// destination is first local
+		const int maxstack = JFUNC_UNLIMITED_STACK; 
+
+		// set src ( always start after closure see Lua VM for reason )
+		mop->add( e, f->m, rargs[ RA_SRC ], rargs[ RA_SRC ], OP_TARGETIMMED( -8 ) );
+
+		// set dst and expect
+		mop->add( e, f->m, rargs[ RA_DST ], OP_TARGETREG( basestack.value.base ), OP_TARGETIMMED( basestack.value.offset ) );
+		mop->move( e, f->m, rargs[ RA_EXPECT ], OP_TARGETIMMED( nparams ) );
+		
+		jfunc_call( mop, e, f->m, JF_ARG_RES_CPY, maxstack, 4, rargs[ RA_SRC ], rargs[ RA_DST ], 
+							rargs[ RA_EXPECT ], rargs[ RA_EXIST ] );
+		prefer_nontemp_release_reg( mop, e, f->m, RA_SIZE );
+	 	
+		load_frame_limit( mop, e, f, 0, nparams );	// load locals living in registers 
+	}
+#else
 	// get arg passing registers
 	operand rargs[ RA_COUNT ];
 	prefer_nontemp_acquire_reg( mop, e, f->m, RA_COUNT, rargs );
@@ -228,6 +288,7 @@ void prologue( struct machine_ops* mop, struct emitter* e, struct frame* f ){
 	}
 
 	prefer_nontemp_release_reg( mop, e, f->m, RA_COUNT );
+#endif
 }
 
 void epilogue( struct machine_ops* mop, struct emitter* e, struct frame* f ){
@@ -246,7 +307,6 @@ void epilogue( struct machine_ops* mop, struct emitter* e, struct frame* f ){
 * to stop clobbering the previous frames locals.
 */
 
-enum { RA_DST, RA_SRC, RA_EXIST, RA_EXPECT, RA_SIZE };
 
 static void do_copying( struct machine_ops* mop, struct emitter* e, struct machine* m, 
 		operand iter, operand limit, operand dst, operand src ){
@@ -313,7 +373,6 @@ static void do_nilling( struct machine_ops* mop, struct emitter* e, struct machi
 }
 
 void jinit_cpy_arg_res( struct JFunc* jf, struct machine_ops* mop, struct emitter* e, struct machine* m ){
-	return;
 	operand rargs[ RA_SIZE ];
 	prefer_nontemp_acquire_reg( mop, e, m, RA_SIZE, rargs );
 

@@ -23,9 +23,8 @@ void jfuncs_cleanup( );
 /*
 * Get jfunc properties
 */
-void* jfuncs_addr( struct machine* m, int idx );
-int jfuncs_temp_clobber( struct machine* m, int idx );	// # of temp regs clobbered
-int jfuncs_stack_clobber( struct machine* m, int idx );	// # of words on stack clobbered ( due to temp spill )
+#define JFUNC_UNLIMITED_STACK	9999	
+void jfunc_call( struct machine_ops* mop, struct emitter* e, struct machine* m, int idx, int maxstack, int nargs, ... );
 
 // callback for creating JIT functions
 typedef void (*jf_init)( struct JFunc* jf, struct machine_ops* mop, struct emitter* e, struct machine* m );

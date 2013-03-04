@@ -51,14 +51,33 @@ static inline struct JFunc* jfuncs_get( int idx ){
 	return &jit_functions[ idx ];
 }
 
-void* jfuncs_addr( struct machine* m, int idx ){
-	jfuncs_get( idx )->addr + jfuncs_get( idx )->addr; 
+void* jfuncs_addr( int idx ){
+	return jfuncs_code  + jfuncs_get( idx )->addr; 
 }
 
 int jfuncs_temp_clobber( struct machine* m, int idx ){
-	min( jfuncs_get( idx )->temp_clobber, m->nr_temp_regs );
+	return min( jfuncs_get( idx )->temp_clobber, m->nr_temp_regs );
 }
 
 int jfuncs_stack_clobber( struct machine* m, int idx ){
-	return max( jfuncs_get( idx )->temp_clobber - m->nr_temp_regs, 0 );
+	return max( jfuncs_get( idx )->temp_clobber - m->nr_temp_regs, 0 );		// +1 for the call saving ra
+}
+
+/*
+* Call Jfunc[idx] with following constraints:
+*	- Make sure call and JFunc total stack clobber is less than maxstack
+*	- Make sure none of the input args are clobbered by the call.
+* For faster compile times these constraints can't be skipped.  
+*/
+void jfunc_call( struct machine_ops* mop, struct emitter* e, struct machine* m, int idx, int maxstack, int nargs, ... ){
+	int callspill = 0;
+
+	// TODO: check constraints 
+
+	// max_access check spill
+	mop->call( e, m, OP_TARGETIMMED( (uintptr_t)jfuncs_addr( idx ) ) );
+	// check spill
+
+	// TODO: proper error handling 
+	assert( callspill + jfuncs_stack_clobber( m, idx )   < maxstack ); 
 }

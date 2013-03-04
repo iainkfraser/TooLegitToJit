@@ -351,7 +351,7 @@ int load_function( FILE* f, struct proto* p, struct code_alloc* ca, struct machi
 
 static void execute( struct proto* main ){
 	struct timeval tv;
-	int x;
+	int x[9];
 	uint32_t start,end;
 	int (*chunk)() = main->code_start;
 
@@ -361,14 +361,26 @@ static void execute( struct proto* main ){
 
 	// temp method for getting result
 #if defined(__mips__)
-	asm("move %0, $16" : "=r" ( x ) );
+	asm("move %0, $16" : "=r" ( x[0] ) );
+	asm("move %0, $18" : "=r" ( x[1] ) );
+	asm("move %0, $20" : "=r" ( x[2] ) );
+	asm("move %0, $22" : "=r" ( x[3] ) );
+	asm("move %0, $8" : "=r" ( x[4] ) );
+	asm("move %0, $10" : "=r" ( x[5] ) );
+	asm("move %0, $12" : "=r" ( x[6] ) );
+	asm("move %0, $14" : "=r" ( x[7] ) );
+	asm("move %0, $24" : "=r" ( x[8] ) );
 #elif defined( __i386__ )
-	asm("movl %%ecx, %0" : "=r" ( x ) ); 
+	asm("movl %%ecx, %0" : "=r" ( x[0] ) ); 
 #endif
 
 	gettimeofday( &tv, NULL );
 	end = tv.tv_sec * 1000 + tv.tv_usec / 1000;
 
+
+	for( int i = 0; i < 8; i++ ){
+		printf("local[%d] = %d\n", i, x[i] );
+	}
 
 	printf("2 Legit 2 JIT %d took %u ms\n", x, end - start );
 }

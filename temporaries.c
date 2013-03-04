@@ -45,6 +45,12 @@ int acquire_temp( struct machine_ops* mop, struct emitter* e, struct machine* m 
 	}
 
 	m->reg[i] = SET_REFCOUNT( m->reg[i], ++rc );	
+
+	// update max
+	int ta = temps_accessed( m );
+	if( ta > m->max_access )
+		m->max_access = ta;
+
 	return reg; 
 }
 
