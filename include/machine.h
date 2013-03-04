@@ -21,26 +21,43 @@ struct machine {
 
 struct machine_ops {
 	void (*move)( struct emitter* me, struct machine* m, operand d, operand s );
+
+	/*
+	* Compulsory arithmetic 
+	*/
 	void (*add)( struct emitter* me, struct machine* m, operand d, operand s, operand t );
 	void (*sub)( struct emitter* me, struct machine* m, operand d, operand s, operand t );
 	void (*mul)( struct emitter* me, struct machine* m, operand d, operand s, operand t );
 	void (*div)( struct emitter* me, struct machine* m, operand d, operand s, operand t );
 	void (*mod)( struct emitter* me, struct machine* m, operand d, operand s, operand t );
 	void (*pow)( struct emitter* me, struct machine* m, operand d, operand s, operand t );
+
+	/*
+	* Compulsory branching instructions. All branches expect temp registers to be
+	* UNclobbered regardless of whether the branch is taken or not.  
+	*/
 	void (*b)( struct emitter* me, struct machine* m, label l );
 	void (*beq)( struct emitter* me, struct machine* m, operand d, operand s, label l );
 	void (*blt)( struct emitter* me, struct machine* m, operand d, operand s, label l );
 	void (*bgt)( struct emitter* me, struct machine* m, operand d, operand s, label l );
 	void (*ble)( struct emitter* me, struct machine* m, operand d, operand s, label l );
 	void (*bge)( struct emitter* me, struct machine* m, operand d, operand s, label l );
+
+	/*
+	* Compulsory function calling instructions. Call is allowed to clobber temps before call. 
+	* But after call they must be restored as usual. Also call is expected to push current
+	* return address on stack before call.  
+	*/
 	void (*call)( struct emitter* me, struct machine* m, operand fn );
 	void (*ret)( struct emitter* me, struct machine* m );
 
+	// TODO: define the constraits on this
+	void (*call_cfn)( struct emitter* me, struct machine* m, uintptr_t fn, size_t argsz );
+	
 	// optional instructions  
 	void (*push)( struct emitter* me, struct machine* m, operand s );
 	void (*pop)( struct emitter* me, struct machine* m, operand d );
 
-	void (*call_cfn)( struct emitter* me, struct machine* m, uintptr_t fn, size_t argsz );
 
 	// each machine has an associated emitter 
 	void (*create_emitter)( struct emitter** e, size_t vmlines );
