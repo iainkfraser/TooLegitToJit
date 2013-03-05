@@ -308,6 +308,10 @@ struct machine mips_mach = {
 	.fp = _fp,
 	.nr_reg = 18 + 4,
 	.nr_temp_regs = 4,
+#ifdef _ELFDUMP_
+	.elf_endian = EI_DATA_LSB,
+	.elf_machine = EM_MIPS,	
+#endif
 	.reg = {
 		_a0,_a1,_a2,_a3,
 		_s0,_s1,_s2,_s3,_s4,_s5,_s6,_s7,

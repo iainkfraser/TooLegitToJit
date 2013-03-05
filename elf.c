@@ -3,11 +3,14 @@
 * obj dump, for easy JIT'd code analysis. 
 */
 
+#include <stdbool.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include "elf.h"
 #include "jitfunc.h" 
+#include "machine.h"
+#include "instruction.h"
 
 #ifndef _ELFDUMP_
 #error "ELF dump not defined"
@@ -57,17 +60,16 @@ static int dump_symbol_localfunc( FILE* f, Elf32_Word name, Elf32_Word value, El
 }
 
 
-
-static void dump_elf_header( FILE* f, int nr_sections, int sechdroff, int strtabidx ){
+static void dump_elf_header( FILE* f, int nr_sections, int sechdroff, int strtabidx, unsigned char endian, Elf32_Half mach ){
 	Elf32_Ehdr hdr = {
 		.e_ident = { 
 			0x7f, 'E', 'L', 'F', 
 			[ EI_CLASS ] = EI_CLASS_32,
-			[ EI_DATA ] = EI_DATA_LSB, 
+			[ EI_DATA ] = endian, 
 			[ EI_VERSION ] = EV_CURRENT,
 		}, 
 		.e_type = ET_REL,
-		.e_machine = EM_MIPS,
+		.e_machine = mach,
 		.e_version = EV_CURRENT,
 		.e_entry = 0,
 		.e_phoff = 0,
@@ -170,7 +172,7 @@ static void dump_sectionentry_protos( FILE* f, struct proto* p, int stridtext, i
 
 }
 
-void serialise( struct proto* main, char* filepath, void *jsection, size_t jsize ){
+void serialise( struct proto* main, char* filepath, void *jsection, size_t jsize, struct machine* m ){
 	int stridst, stridtext, stridsyt, stidx = 0, stoff, stend, syoff, syend, jfuncoff, sechdroff, sysz;
 	FILE* o = fopen( filepath, "w" );
 
@@ -214,7 +216,7 @@ void serialise( struct proto* main, char* filepath, void *jsection, size_t jsize
 	
 	// goto start and dump header
 	fseek( o, 0, SEEK_SET );
-	dump_elf_header( o, 4 + nr_lsections, sechdroff, strtabidx );
+	dump_elf_header( o, 4 + nr_lsections, sechdroff, strtabidx, m->elf_endian, m->elf_machine );
 	
 	fclose( o );
 }

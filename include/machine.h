@@ -10,12 +10,23 @@
 #include "operand.h"
 #include "emitter.h"
 
+#ifdef _ELFDUMP_
+#include "elf.h"
+#endif
+
+
 struct machine {
 	int 		sp,fp;		// stack pointer and frame pointer 
 	int 		nr_reg;
 	int 		nr_temp_regs;  	// first NR_TEMP_REGS registers are temps the rest are used for locals and consts
 	bool		allow_spill;	// allow acquire_register to spill temp onto the stack  
 	int		max_access;	// max number of temps accessed, just by JITFunc 
+
+#ifdef _ELFDUMP_
+	Elf32_Half	elf_machine;
+	unsigned char	elf_endian;	
+#endif
+
 	uint32_t 	reg[];		// upper 2 words are free for emitter use for temp allocation
 };
 

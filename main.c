@@ -452,7 +452,7 @@ int main( int argc, char* argv[] ){
 	if( !disassem )
 		execute( &main );
 	else
-		serialise( &main, out, jitfuncs, sizemcode );	
+		serialise( &main, out, jitfuncs, sizemcode, &mips_mach );	
 
 	// cleanup
 	ca.free( jitfuncs, sizemcode );

@@ -6,9 +6,11 @@
 #ifndef _ELF_H_
 #define _ELF_H_
 
-#include "instruction.h"
+#include <stdint.h>
 
-void serialise( struct proto* main, char* filepath, void *jsection, size_t jsize );
+struct proto;
+struct machine;
+void serialise( struct proto* main, char* filepath, void *jsection, size_t jsize, struct machine* m );
 
 #define ELF_MAGICSIZE		4
 
