@@ -25,7 +25,7 @@
 #include "list.h"
 #include "macros.h"
 #include "jitfunc.h"
-
+#include "elf.h"
 
 struct code_alloc {
 	void* ( *alloc )( size_t );
@@ -383,13 +383,6 @@ static void execute( struct proto* main ){
 	}
 
 	printf("2 Legit 2 JIT %d took %u ms\n", x, end - start );
-}
-
-static void serialise( struct proto* main, char* filepath ){
-	// TODO: recursively write instructions to file
-	FILE* o = fopen( filepath, "w" );
-	fwrite( main->code, main->sizemcode, 1, o );
-	fclose( o );
 }
 
 static void cleanup( struct proto* p, struct code_alloc* ca ){

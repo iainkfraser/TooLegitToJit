@@ -47,7 +47,7 @@ void jfuncs_setsection( void* section ){
 	jfuncs_code = (char*)section;
 }
 
-static inline struct JFunc* jfuncs_get( int idx ){
+struct JFunc* jfuncs_get( int idx ){
 	return &jit_functions[ idx ];
 }
 

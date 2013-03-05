@@ -1,8 +1,8 @@
 #CC := mipsel-openwrt-linux-gcc
-CFLAGS := -I include -std=gnu99 -g3 -MD -MP -Werror 
+CFLAGS := -I include -std=gnu99 -g3 -MD -MP -Werror -D_ELFDUMP_ 
 
 # arch independent 
-OBJECTS := jitfunc.o temporaries.o emitter32.o frame.o instruction.o synthetic.o 
+OBJECTS := elf.o jitfunc.o temporaries.o emitter32.o frame.o instruction.o synthetic.o 
 OBJECTS += main.o table.o func.o operand.o stack.o xlogue.o 
 
 # arch dependent

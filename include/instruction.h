@@ -24,6 +24,10 @@ struct proto {
 	void*	code;
 	void*	code_start;
 
+#ifdef _ELFDUMP_
+	int	strtabidx;	// string table index
+#endif
+
 	struct proto* subp;	// child prototypes 
 
 };
