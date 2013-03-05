@@ -85,21 +85,24 @@ static void dump_elf_header( FILE* f, int nr_sections, int sechdroff, int strtab
 	fwrite( &hdr, sizeof( hdr ), 1, f );
 }
 
+// dump Lua function label ( hirarchy based label )
 static void dump_label( FILE* f, int n, int lbl[n], int *stidx ){
+	*stidx += fprintf( f, "L" );
+
 	for( int i = 0; i < n; i++ ){
-		stidx += fprintf( f, "%d", lbl[i] );
+		*stidx += fprintf( f, "%d", lbl[i] );
 		if( i + 1 < n )
-			stidx += fputs( ".", f );
+			*stidx += fputs( ".", f );
 	}
 
-	stidx += fputns( f, "" );	
+	*stidx += fputns( f, "" );	
 }
 
 static void dump_stringtable_jfuncs( FILE* f, int *stidx ){
 	for( int i = 0; i < JF_COUNT; i++ ){
 		jfuncs_get( i )->strtabidx = *stidx;
 		*stidx += fprintf( f, "J%d", i );
-		fputns( f, "" );	
+		*stidx += fputns( f, "" );	
 	}
 }
 
@@ -111,6 +114,17 @@ static int dump_symboltable_jfuncs( FILE* f, int secidx ){
 	}
 
 	return JF_COUNT;
+}
+
+static int dump_symboltable_protos( FILE* f, struct proto* p, int* secidx ){
+	int count = 0;
+
+	for( int i = 0; i < p->nrprotos; i++ ){
+		count += dump_symboltable_protos( f, &p->subp[i], secidx );	
+	}
+
+	count += dump_symbol_localfunc( f, p->strtabidx, 0, (*secidx)++ );
+	return count;
 }
 
 static void dump_stringtable_protos( FILE* f, struct proto* p, float idx, int n, int* src, int *stidx ){
@@ -137,10 +151,24 @@ static long dump_section_jfuncs( FILE* f, void *jsection, size_t jsize ){
 }
 
 static void dump_section_protos( FILE* f, struct proto* p ){
+	for( int i = 0; i < p->nrprotos; i++ ){
+		dump_section_protos( f, &p->subp[i] );	
+	}
 
+	p->secoff = ftell( f );
+	fwrite( p->code, p->sizemcode, 1, f );	
+	p->secend = ftell( f );	
 }
 
+static void dump_sectionentry_protos( FILE* f, struct proto* p, int stridtext, int sytabidx ){
+	for( int i = 0; i < p->nrprotos; i++ ){
+		dump_sectionentry_protos( f, &p->subp[i], stridtext, sytabidx );
+	}
 
+	dump_section( f, stridtext, SHT_PROGBITS, SHF_ALLOC | SHF_EXECINSTR, 
+			(int)p->code, p->secoff, p->secend - p->secoff, sytabidx, 0, 0 );
+
+}
 
 void serialise( struct proto* main, char* filepath, void *jsection, size_t jsize ){
 	int stridst, stridtext, stridsyt, stidx = 0, stoff, stend, syoff, syend, jfuncoff, sechdroff, sysz;
@@ -148,6 +176,8 @@ void serialise( struct proto* main, char* filepath, void *jsection, size_t jsize
 
 	const int strtabidx = 1;	// string table always after null entry in section header
 	const int sytabidx = 2;
+	int luasecstart = 4;
+	int nr_lsections = 0;
 	
 	// skip over the header 
 	fseek( o, sizeof( Elf32_Ehdr ), SEEK_CUR );
@@ -164,13 +194,14 @@ void serialise( struct proto* main, char* filepath, void *jsection, size_t jsize
 
 	// dump sections
 	jfuncoff = dump_section_jfuncs( o, jsection, jsize );
-	// TODO: dump functions in own section
+	dump_section_protos( o, main );
 
 	// dump symbol table
 	sysz = 0;
 	syoff = ftell( o );
 	sysz += dump_symbol( o, 0, 0, 0, SHN_UNDEF );
 	sysz += dump_symboltable_jfuncs( o, sytabidx + 1 );	// jfuncs section is after NULL, strtab and symtab
+	sysz += ( nr_lsections = dump_symboltable_protos( o, main, &luasecstart ) );
 	syend = ftell( o );
 
 	// dump section header entries 
@@ -179,11 +210,11 @@ void serialise( struct proto* main, char* filepath, void *jsection, size_t jsize
 	dump_section( o, stridst, SHT_STRTAB, 0, 0, stoff, stend - stoff, SHN_UNDEF, 0, 0 );	// string table
 	dump_section( o, stridsyt, SHT_SYMTAB, 0, 0, syoff, syend - syoff, strtabidx, sysz, sizeof( Elf32_Sym ) );
 	dump_section( o, stridtext, SHT_PROGBITS, SHF_ALLOC | SHF_EXECINSTR, (int)jsection, jfuncoff, jsize, sytabidx, 0, 0 );
-	// TODO: text sections
+	dump_sectionentry_protos( o, main, stridtext, sytabidx );
 	
 	// goto start and dump header
 	fseek( o, 0, SEEK_SET );
-	dump_elf_header( o, 4, sechdroff, strtabidx );
+	dump_elf_header( o, 4 + nr_lsections, sechdroff, strtabidx );
 	
 	fclose( o );
 }
