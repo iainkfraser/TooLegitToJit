@@ -81,3 +81,5 @@ void jfunc_call( struct machine_ops* mop, struct emitter* e, struct machine* m, 
 	// TODO: proper error handling 
 	assert( callspill + jfuncs_stack_clobber( m, idx )   < maxstack ); 
 }
+
+

@@ -13,7 +13,14 @@
 #error "ELF dump not defined"
 #endif
 
-static void dump_elf_header( FILE* f ){
+
+static int fputns( FILE* f, const char* str ){
+	int off = fprintf( f, "%s", str );
+	off += fwrite( "\0", 1, 1, f );
+	return off;
+}
+
+static void dump_elf_header( FILE* f, int nr_sections, int sechdroff, int strtabidx ){
 	Elf32_Ehdr hdr = {
 		.e_ident = { 
 			0x7f, 'E', 'L', 'F', 
@@ -26,14 +33,14 @@ static void dump_elf_header( FILE* f ){
 		.e_version = EV_CURRENT,
 		.e_entry = 0,
 		.e_phoff = 0,
-		.e_shoff = sizeof( Elf32_Ehdr ), 	// section header follows the elf header 
+		.e_shoff = sechdroff,  
 		.e_flags = 0,		// TODO: is this needed? 
 		.e_ehsize = sizeof( Elf32_Ehdr ),
 		.e_phentsize = sizeof( Elf32_Phdr ),
 		.e_phnum = 0,
 		.e_shentsize = sizeof( Elf32_Shdr ),
-		.e_shnum = JF_COUNT + 2,	// null sec + strtab + symtab + every func + every jfunc	 
-		.e_shtrndx = 1		// TODO: location of string table
+		.e_shnum = nr_sections,			 
+		.e_shtrndx = strtabidx		
 	};
 
 
@@ -47,7 +54,7 @@ static void dump_label( FILE* f, int n, int lbl[n], int *stidx ){
 			stidx += fputs( ".", f );
 	}
 
-	stidx += fputs( "\0", f );	
+	stidx += fputns( f, "" );	
 }
 
 static void dump_stringtable_jfuncs( FILE* f, int *stidx ){
@@ -64,7 +71,7 @@ static void dump_stringtable_protos( FILE* f, struct proto* p, float idx, int n,
 	memcpy( label, src, sizeof( int ) * n );
 	label[n] = idx;
 
-	for(int i = 0; i < p->nrprotos; i++ ){
+	for( int i = 0; i < p->nrprotos; i++ ){
 		dump_stringtable_protos( f, &p->subp[i], i, n+1, label, stidx );
 	}
 
@@ -74,8 +81,37 @@ static void dump_stringtable_protos( FILE* f, struct proto* p, float idx, int n,
 
 }
 
-static void dump_section_header( FILE* f ){
-	Elf32_Shdr hdr[ JF_COUNT + 1 ] = {
+static long dump_section_jfuncs( FILE* f, void *jsection, size_t jsize ){
+	long start = ftell( f );
+	fwrite( jsection, jsize, 1, f );
+	return start;
+}
+
+static void dump_section_protos( FILE* f, struct proto* p ){
+
+}
+
+static void dump_section( FILE* f, Elf32_Word name, Elf32_Word type, Elf32_Word flags, Elf32_Word addr, Elf32_Word off,
+					Elf32_Word size, Elf32_Word link, Elf32_Word info  ){
+	Elf32_Shdr entry = {
+			.sh_name = name,
+			.sh_type = type,
+			.sh_flags = flags,
+			.sh_addr = addr,
+			.sh_offset = off,
+			.sh_size = size,
+			.sh_link = link,
+			.sh_info = info,
+			.sh_addralign = 0, 
+			.sh_entsize = 0
+	};
+
+	fwrite( &entry, sizeof( entry ), 1, f );
+}
+
+
+static void dump_section_header( FILE* f, struct proto* p, int secst, int secjfuncs, int nrprotos, int txtidx ){
+	Elf32_Shdr hdr[ JF_COUNT + 2 ] = {
 		{
 			.sh_name = 0,
 			.sh_type = SHT_NULL,
@@ -87,7 +123,7 @@ static void dump_section_header( FILE* f ){
 			.sh_info = 0,
 			.sh_addralign = 0, 
 			.sh_entsize = 0
-		}
+		} 
 	};
 	
 	for( int i = 1; i < JF_COUNT; i++ ){
@@ -106,23 +142,38 @@ static void dump_section_header( FILE* f ){
 	fwrite( &hdr, sizeof( hdr ), 1, f );
 }
 
-void serialise( struct proto* main, char* filepath ){
-	// TODO: recursively write instructions to file
+void serialise( struct proto* main, char* filepath, void *jsection, size_t jsize ){
+	int stridst, stridtext, stidx = 0, stoff, stend, jfuncoff, sechdroff;
+	const int strtabidx = 1;	// string table always after null entry in section header
 	FILE* o = fopen( filepath, "w" );
-	fwrite( main->code, main->sizemcode, 1, o );
 
-	// TODO: dump header
-	dump_elf_header( o );
+	// skip over the header 
+	fseek( o, sizeof( Elf32_Ehdr ), SEEK_CUR );
 	
 	// dump string table
-	int text, stidx = 1;
-	stidx += fprintf( o, "\0" );
-	text = stidx;
-	stidx += fprintf( o, "text" );
+	stoff = ftell( o );
+	stridtext = ( stidx += fputns( o, "" ) );
+	stridst =  ( stidx += fputns( o, ".text" ) );
+	( stidx += fputns( o, ".strtab" ) );
 	dump_stringtable_jfuncs( o, &stidx );
 	dump_stringtable_protos( o, main, 0, 0, NULL, &stidx );
+	stend = ftell( o );
 
 	// dump sections
+	jfuncoff = dump_section_jfuncs( o, jsection, jsize );
+	// TODO: dump functions in own section
+
+	// dump section header entries 
+	sechdroff = ftell( o );
+	dump_section( o, 0, SHT_NULL, 0, 0, 0, 0, SHN_UNDEF, 0 );				// null section
+	dump_section( o, stridst, SHT_STRTAB, 0, 0, stoff, stend - stoff, SHN_UNDEF, 0 );	// string table
+	// TODO: symbol table
+	dump_section( o, stridtext, SHT_PROGBITS, SHF_ALLOC | SHF_EXECINSTR, (int)jsection, jfuncoff, jsize, 0, 0 );
+	// TODO: text sections
+	
+	// goto start and dump header
+	fseek( o, 0, SEEK_SET );
+	dump_elf_header( o, 3, sechdroff, strtabidx );
 	
 	fclose( o );
 }

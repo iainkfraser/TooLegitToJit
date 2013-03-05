@@ -26,6 +26,7 @@ struct proto {
 
 #ifdef _ELFDUMP_
 	int	strtabidx;	// string table index
+	int	secstart;	// section start 
 #endif
 
 	struct proto* subp;	// child prototypes 

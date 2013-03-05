@@ -8,7 +8,7 @@
 
 #include "instruction.h"
 
-void serialise( struct proto* main, char* filepath );
+void serialise( struct proto* main, char* filepath, void *jsection, size_t jsize );
 
 #define ELF_MAGICSIZE		4
 
@@ -55,6 +55,7 @@ void serialise( struct proto* main, char* filepath );
 /* section header types */
 #define SHT_NULL	0
 #define SHT_PROGBITS	1
+#define SHT_STRTAB	3
 
 /* section header special index's */
 #define SHN_UNDEF	0
