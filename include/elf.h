@@ -55,6 +55,7 @@ void serialise( struct proto* main, char* filepath, void *jsection, size_t jsize
 /* section header types */
 #define SHT_NULL	0
 #define SHT_PROGBITS	1
+#define SHT_SYMTAB	2
 #define SHT_STRTAB	3
 
 /* section header special index's */
@@ -63,6 +64,17 @@ void serialise( struct proto* main, char* filepath, void *jsection, size_t jsize
 /* section header flags */
 #define SHF_ALLOC	0x2
 #define SHF_EXECINSTR	0x4
+
+/* Symbol info access */
+#define ELF32_ST_BIND(i)	((i)>>4)
+#define ELF32_ST_TYPE(i)	((i)&0xf)
+#define ELF32_ST_INFO(b,t)	(((b)<<4)+((t)&0xf))
+
+/* Symbol binds */
+#define STB_LOCAL	0
+
+/* Symbol types */
+#define STT_FUNC 	2
 
 /*
 * Elf control data is machine independent and use
@@ -119,5 +131,17 @@ typedef struct {
 	Elf32_Word sh_addralign;
 	Elf32_Word sh_entsize;
 } Elf32_Shdr;
+
+
+typedef struct {
+	Elf32_Word st_name;
+	Elf32_Addr st_value;
+	Elf32_Word st_size;
+	unsigned char st_info;
+	unsigned char st_other;
+	Elf32_Half st_shndx;
+} Elf32_Sym;
+
+
 
 #endif

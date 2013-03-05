@@ -20,6 +20,44 @@ static int fputns( FILE* f, const char* str ){
 	return off;
 }
 
+static void dump_section( FILE* f, Elf32_Word name, Elf32_Word type, Elf32_Word flags, Elf32_Word addr, Elf32_Word off,
+					Elf32_Word size, Elf32_Word link, Elf32_Word info, Elf32_Word esize ){
+	Elf32_Shdr entry = {
+			.sh_name = name,
+			.sh_type = type,
+			.sh_flags = flags,
+			.sh_addr = addr,
+			.sh_offset = off,
+			.sh_size = size,
+			.sh_link = link,
+			.sh_info = info,
+			.sh_addralign = 0, 
+			.sh_entsize = esize
+	};
+
+	fwrite( &entry, sizeof( entry ), 1, f );
+}
+
+static int dump_symbol( FILE* f, Elf32_Word name, Elf32_Word value, unsigned char info, Elf32_Half secidx ){
+	Elf32_Sym s = {
+		.st_name = name,
+		.st_value = value,
+		.st_size = 0,
+		.st_info = info,
+		.st_other = 0,
+		.st_shndx = secidx	
+	};
+
+	fwrite( &s, sizeof( s ), 1, f );
+	return 1;
+}
+
+static int dump_symbol_localfunc( FILE* f, Elf32_Word name, Elf32_Word value, Elf32_Half secidx ){
+	return dump_symbol( f, name, value, ELF32_ST_INFO( STB_LOCAL, STT_FUNC ), secidx );
+}
+
+
+
 static void dump_elf_header( FILE* f, int nr_sections, int sechdroff, int strtabidx ){
 	Elf32_Ehdr hdr = {
 		.e_ident = { 
@@ -60,8 +98,19 @@ static void dump_label( FILE* f, int n, int lbl[n], int *stidx ){
 static void dump_stringtable_jfuncs( FILE* f, int *stidx ){
 	for( int i = 0; i < JF_COUNT; i++ ){
 		jfuncs_get( i )->strtabidx = *stidx;
-		*stidx += fprintf( f, "J%d", i );	
+		*stidx += fprintf( f, "J%d", i );
+		fputns( f, "" );	
 	}
+}
+
+static int dump_symboltable_jfuncs( FILE* f, int secidx ){
+	for( int i = 0; i < JF_COUNT; i++ ){
+		struct JFunc* j = jfuncs_get( i );
+
+		dump_symbol_localfunc( f, j->strtabidx, j->addr, secidx );
+	}
+
+	return JF_COUNT;
 }
 
 static void dump_stringtable_protos( FILE* f, struct proto* p, float idx, int n, int* src, int *stidx ){
@@ -91,62 +140,15 @@ static void dump_section_protos( FILE* f, struct proto* p ){
 
 }
 
-static void dump_section( FILE* f, Elf32_Word name, Elf32_Word type, Elf32_Word flags, Elf32_Word addr, Elf32_Word off,
-					Elf32_Word size, Elf32_Word link, Elf32_Word info  ){
-	Elf32_Shdr entry = {
-			.sh_name = name,
-			.sh_type = type,
-			.sh_flags = flags,
-			.sh_addr = addr,
-			.sh_offset = off,
-			.sh_size = size,
-			.sh_link = link,
-			.sh_info = info,
-			.sh_addralign = 0, 
-			.sh_entsize = 0
-	};
 
-	fwrite( &entry, sizeof( entry ), 1, f );
-}
-
-
-static void dump_section_header( FILE* f, struct proto* p, int secst, int secjfuncs, int nrprotos, int txtidx ){
-	Elf32_Shdr hdr[ JF_COUNT + 2 ] = {
-		{
-			.sh_name = 0,
-			.sh_type = SHT_NULL,
-			.sh_flags = 0,
-			.sh_addr = 0,
-			.sh_offset = 0,
-			.sh_size = 0,
-			.sh_link = SHN_UNDEF,
-			.sh_info = 0,
-			.sh_addralign = 0, 
-			.sh_entsize = 0
-		} 
-	};
-	
-	for( int i = 1; i < JF_COUNT; i++ ){
-		hdr[ i ].sh_name = 1;	// TODO: set string table index 1 to .text
-		hdr[ i ].sh_type = SHT_PROGBITS;
-		hdr[ i ].sh_flags = SHF_ALLOC | SHF_EXECINSTR;
-		hdr[ i ].sh_addr = 0;		// TODO: the memory location of section
-		hdr[ i ].sh_offset = 0;		// TODO: determine the location 
-		hdr[ i ].sh_size = 0;		// TODO: determine size of section
-		hdr[ i ].sh_link = 0;		// TODO: the section header index of the symbol table for this index
-		hdr[ i ].sh_info = 0;		// TODO: the section header index of the section to which relo applies
-		hdr[ i ].sh_addralign = 0;
-		hdr[ i ].sh_entsize = 0; 
-	}	
-
-	fwrite( &hdr, sizeof( hdr ), 1, f );
-}
 
 void serialise( struct proto* main, char* filepath, void *jsection, size_t jsize ){
-	int stridst, stridtext, stidx = 0, stoff, stend, jfuncoff, sechdroff;
-	const int strtabidx = 1;	// string table always after null entry in section header
+	int stridst, stridtext, stridsyt, stidx = 0, stoff, stend, syoff, syend, jfuncoff, sechdroff, sysz;
 	FILE* o = fopen( filepath, "w" );
 
+	const int strtabidx = 1;	// string table always after null entry in section header
+	const int sytabidx = 2;
+	
 	// skip over the header 
 	fseek( o, sizeof( Elf32_Ehdr ), SEEK_CUR );
 	
@@ -154,7 +156,8 @@ void serialise( struct proto* main, char* filepath, void *jsection, size_t jsize
 	stoff = ftell( o );
 	stridtext = ( stidx += fputns( o, "" ) );
 	stridst =  ( stidx += fputns( o, ".text" ) );
-	( stidx += fputns( o, ".strtab" ) );
+	stridsyt = ( stidx += fputns( o, ".strtab" ) );
+	stidx += fputns( o, ".symtab" );
 	dump_stringtable_jfuncs( o, &stidx );
 	dump_stringtable_protos( o, main, 0, 0, NULL, &stidx );
 	stend = ftell( o );
@@ -163,17 +166,24 @@ void serialise( struct proto* main, char* filepath, void *jsection, size_t jsize
 	jfuncoff = dump_section_jfuncs( o, jsection, jsize );
 	// TODO: dump functions in own section
 
+	// dump symbol table
+	sysz = 0;
+	syoff = ftell( o );
+	sysz += dump_symbol( o, 0, 0, 0, SHN_UNDEF );
+	sysz += dump_symboltable_jfuncs( o, sytabidx + 1 );	// jfuncs section is after NULL, strtab and symtab
+	syend = ftell( o );
+
 	// dump section header entries 
 	sechdroff = ftell( o );
-	dump_section( o, 0, SHT_NULL, 0, 0, 0, 0, SHN_UNDEF, 0 );				// null section
-	dump_section( o, stridst, SHT_STRTAB, 0, 0, stoff, stend - stoff, SHN_UNDEF, 0 );	// string table
-	// TODO: symbol table
-	dump_section( o, stridtext, SHT_PROGBITS, SHF_ALLOC | SHF_EXECINSTR, (int)jsection, jfuncoff, jsize, 0, 0 );
+	dump_section( o, 0, SHT_NULL, 0, 0, 0, 0, SHN_UNDEF, 0, 0 );				// null section
+	dump_section( o, stridst, SHT_STRTAB, 0, 0, stoff, stend - stoff, SHN_UNDEF, 0, 0 );	// string table
+	dump_section( o, stridsyt, SHT_SYMTAB, 0, 0, syoff, syend - syoff, strtabidx, sysz, sizeof( Elf32_Sym ) );
+	dump_section( o, stridtext, SHT_PROGBITS, SHF_ALLOC | SHF_EXECINSTR, (int)jsection, jfuncoff, jsize, sytabidx, 0, 0 );
 	// TODO: text sections
 	
 	// goto start and dump header
 	fseek( o, 0, SEEK_SET );
-	dump_elf_header( o, 3, sechdroff, strtabidx );
+	dump_elf_header( o, 4, sechdroff, strtabidx );
 	
 	fclose( o );
 }
