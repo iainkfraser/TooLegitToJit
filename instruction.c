@@ -71,7 +71,10 @@ void emit_div( struct emitter** mce, struct machine_ops* mop, struct frame* f, l
 }
 
 void emit_mod( struct emitter** mce, struct machine_ops* mop, struct frame* f, loperand d, loperand s, loperand t ){
-	emit_bop( REF, f, d, s, t, mop->mod );
+	emit_bop( REF, f, d, s, t, mop->smod );
+	
+	// TODO: convert to floored mod 
+	// if ((d > 0 && t < 0) || (d < 0 && t > 0)) d = d+t;
 }
 
 /*

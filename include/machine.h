@@ -31,10 +31,11 @@ struct machine {
 };
 
 /*
-* Generic integer machine. Assume 2's complement and overflow is ignored therfore:
+* Generic integer machine. Assume 2's complement and overflows are ignored. Also
+* division truncates the quotient. So the following can be deduced:
 * - Signed and unsigned add, sub, multiply ( therefore pow ) are equivalent.  
 * - Branch compare instructions rely on add,sub and therefore are signed/unsigned indifferent.
-* - TODO: define mod as Lua one  
+* - Mod is trunc based ergo it shares the sign of the dividend.
 */
 struct machine_ops {
 	void (*move)( struct emitter* me, struct machine* m, operand d, operand s );
@@ -47,7 +48,8 @@ struct machine_ops {
 	void (*mul)( struct emitter* me, struct machine* m, operand d, operand s, operand t );
 	void (*sdiv)( struct emitter* me, struct machine* m, operand d, operand s, operand t );
 	void (*udiv)( struct emitter* me, struct machine* m, operand d, operand s, operand t );
-	void (*mod)( struct emitter* me, struct machine* m, operand d, operand s, operand t );
+	void (*smod)( struct emitter* me, struct machine* m, operand d, operand s, operand t );
+	void (*umod)( struct emitter* me, struct machine* m, operand d, operand s, operand t );
 	void (*pow)( struct emitter* me, struct machine* m, operand d, operand s, operand t );
 
 	/*

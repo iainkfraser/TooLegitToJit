@@ -194,10 +194,13 @@ void mips_udiv( struct emitter* me, struct machine* m, operand d, operand s, ope
 	mips_div( me, m, d, s, t, false );
 }
 
-void mips_mod( struct emitter* me, struct machine* m, operand d, operand s, operand t ){
+void mips_smod( struct emitter* me, struct machine* m, operand d, operand s, operand t ){
 	do_nonimm_bop( me, m, d, s, t, MOP_SPECIAL_DIV, MOP_SPECIAL, true, false );
 }
 
+void mips_umod( struct emitter* me, struct machine* m, operand d, operand s, operand t ){
+	do_nonimm_bop( me, m, d, s, t, MOP_SPECIAL_DIVU, MOP_SPECIAL, true, false );
+}
 
 void mips_pow( struct emitter* me, struct machine* m, operand d, operand s, operand t ){
 
