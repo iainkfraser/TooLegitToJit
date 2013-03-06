@@ -10,6 +10,7 @@
 #include "machine.h"
 #include "macros.h"
 #include "emitter32.h"
+#include "bit_manip.h"
 #include "arch/mips/regdef.h"
 #include "arch/mips/opcodes.h"
 
@@ -56,20 +57,25 @@ static struct aq_reg acquire_reg( struct emitter* e, struct machine* m, operand*
 		a.n++;
 	}
 
-	if( s->tag == OT_DIRECTADDR ){
-		move( e, m, *d, *s );
-		*s = *d;
+	if( !( s->tag == OT_REG || ( is_add_immed( *s ) && allowimmed ) )  ){
+		operand news;
+
+		if( t->tag == OT_REG && t->reg == d->reg )
+			news = OP_TARGETREG( acquire_temp( _MOP, e, m ) ), a.n++;				
+		else
+			news = *d;
+		
+		move( e, m, news, *s );
+		*s = news;
 	}
 	
 	if( !( t->tag == OT_REG || ( is_add_immed( *t ) && allowimmed ) ) ){
 		operand newt;
 
-		if( s == d ){
-			a.n++;
-			newt = OP_TARGETREG( acquire_temp( _MOP, e, m ) );
-		} else {
+		if( s->tag == OT_REG && s->reg == d->reg )
+			newt = OP_TARGETREG( acquire_temp( _MOP, e, m ) ), a.n++;
+		else
 			newt = *d;
-		}
 		
 		move( e, m, newt, *t );
 		*t = newt;
@@ -145,7 +151,19 @@ void mips_sub( struct emitter* me, struct machine* m, operand d, operand s, oper
 }
 
 void mips_mul( struct emitter* me, struct machine* m, operand d, operand s, operand t ){
-	do_nonimm_bop( me, m, d, s, t, MOP_SPECIAL2_MUL, MOP_SPECIAL2, false, false );
+	if( is_add_immed( s ) && ispowerof2( s.k ) )
+		swap( s, t );
+	
+	if( is_add_immed( t ) && ispowerof2( t.k ) ){
+		int sk = ilog2( t.k );	
+
+		struct aq_reg a = acquire_reg( me, m, &d, &s, &t, true );
+		assert( d.tag == OT_REG && s.tag == OT_REG && t.tag == OT_IMMED );		
+		EMIT( MI_SLL( d.reg, s.reg, sk ) );
+		release_reg( me, m, d, a ); 
+	} else {
+		do_nonimm_bop( me, m, d, s, t, MOP_SPECIAL2_MUL, MOP_SPECIAL2, false, false );
+	}
 }
 
 void mips_div( struct emitter* me, struct machine* m, operand d, operand s, operand t ){

@@ -36,13 +36,13 @@
 #define POWEROF2(x)	( 1 << x )
 #define LOG2(x)		__LOG2(x)
 
+
 /*
 * Log2 on variables
 */
 
-#ifdef _KERNEL
 
-static inline unsigned int log2( unsigned int x ){
+static inline unsigned int ilog2( unsigned int x ){
 	unsigned int r = 0;
 	while( x >>= 1 )
 		r++; 
@@ -50,7 +50,6 @@ static inline unsigned int log2( unsigned int x ){
 	return r;
 }
 
-#endif
 
 /*
 * Determine if value is power of 2
@@ -59,7 +58,7 @@ static inline unsigned int log2( unsigned int x ){
 #define ispowerof2(x)				\
 	({					\
 		typeof(x) a = ( x );		\
-		!( a & ( a - 1 ) );		\
+		a && !( a & ( a - 1 ) );	\
 	})
 
 /*
