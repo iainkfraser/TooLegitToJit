@@ -6,7 +6,7 @@ OBJECTS := elf.o jitfunc.o temporaries.o emitter32.o frame.o instruction.o synth
 OBJECTS += main.o table.o func.o operand.o stack.o xlogue.o 
 
 # arch dependent
-OBJECTS += arch/mips/machine.o
+OBJECTS += arch/mips/machine.o arch/mips/arithmetic.o
 
 OBJDIR := bin
 OBJS := $(patsubst %,$(OBJDIR)/%,$(OBJECTS))

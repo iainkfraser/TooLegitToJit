@@ -12,6 +12,7 @@
 #include "emitter32.h"
 #include "arch/mips/regdef.h"
 #include "arch/mips/opcodes.h"
+#include "arch/mips/arithmetic.h"
 
 // use the sp variable in machine struct 
 #undef sp
@@ -63,7 +64,7 @@ static void loadreg( struct emitter* me, operand* d, int temp_reg, bool forcereg
 } 
 
 
-static void move( struct emitter* me, struct machine* m, operand d, operand s ){
+void move( struct emitter* me, struct machine* m, operand d, operand s ){
 	assert( d.tag == OT_REG || d.tag == OT_DIRECTADDR );	
 	int reg;
 	bool istemp = false;
@@ -136,7 +137,7 @@ static void add( struct emitter* me, struct machine* m, operand d, operand s, op
 	do_bop( me, m, d, s, t, MOP_SPECIAL_ADDU, MOP_SPECIAL );
 }
 
-static void sub( struct emitter* me, struct machine* m, operand d, operand s, operand t ){
+void sub( struct emitter* me, struct machine* m, operand d, operand s, operand t ){
 	do_bop( me, m, d, s, t, MOP_SPECIAL_SUBU, MOP_SPECIAL );
 }
 
@@ -284,8 +285,8 @@ static void call_cfn( struct emitter* me, struct machine* m, uintptr_t fn, size_
 
 struct machine_ops mips_ops = {
 	.move = move,
-	.add = add,
-	.sub = sub,
+	.add = mips_add,
+	.sub = mips_sub,
 	.mul = mul,
 	.div = divide,
 	.mod = mod,
