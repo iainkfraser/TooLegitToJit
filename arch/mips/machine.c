@@ -137,7 +137,7 @@ static void add( struct emitter* me, struct machine* m, operand d, operand s, op
 	do_bop( me, m, d, s, t, MOP_SPECIAL_ADDU, MOP_SPECIAL );
 }
 
-void sub( struct emitter* me, struct machine* m, operand d, operand s, operand t ){
+static void sub( struct emitter* me, struct machine* m, operand d, operand s, operand t ){
 	do_bop( me, m, d, s, t, MOP_SPECIAL_SUBU, MOP_SPECIAL );
 }
 
@@ -287,10 +287,10 @@ struct machine_ops mips_ops = {
 	.move = move,
 	.add = mips_add,
 	.sub = mips_sub,
-	.mul = mul,
-	.div = divide,
-	.mod = mod,
-	.pow = power,
+	.mul = mips_mul,
+	.div = mips_div,
+	.mod = mips_mod,
+	.pow = mips_pow,
 	.b = b,
 	.beq = beq,
 	.blt = blt,

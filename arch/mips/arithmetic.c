@@ -37,6 +37,15 @@ struct aq_reg {
 	int 	n;	// number of temps
 };
 
+/*
+* TODO: 
+* fix bug when one of the operands is same reg as destination
+* have mul and div be smart with multiples of 2
+* fix the potential bug when checking for immed of negative pre negation
+* Update branching to satisfy constraints set by generic machine
+* Start work on smart generic register spill jit function
+*/
+
 static struct aq_reg acquire_reg( struct emitter* e, struct machine* m, operand* d, operand* s, operand* t, bool allowimmed ){
 	assert( d->tag != OT_IMMED && s->tag != OT_IMMED );
 
@@ -78,6 +87,19 @@ static void release_reg( struct emitter* e, struct machine* m, operand d, struct
 	release_tempn( _MOP, e, m, a.n );
 }
 
+static void do_nonimm_bop( struct emitter* me, struct machine* m, operand d, operand s, operand t, int op, int special,
+		bool isdiv, bool islow ){
+	struct aq_reg a = acquire_reg( me, m, &d, &s, &t, false );
+	assert( d.tag == OT_REG && s.tag == OT_REG && t.tag == OT_REG );
+
+	ENCODE_OP( me, GEN_MIPS_OPCODE_3REG( special, s.reg, t.reg, isdiv ? _zero : d.reg, op ) );
+
+	if( isdiv )
+		ENCODE_OP( me,	GEN_MIPS_OPCODE_3REG( MOP_SPECIAL, _zero, _zero, d.reg, 
+					islow ? MOP_SPECIAL_MFLO : MOP_SPECIAL_MFHI ) );
+	release_reg( me, m, d, a ); 
+}
+
 
 static void do_add( struct emitter* me, struct machine* m, operand d, operand s, operand t, bool negate ){
 	VALIDATE_OPERANDS( + );
@@ -105,24 +127,36 @@ void mips_add( struct emitter* me, struct machine* m, operand d, operand s, oper
 	return do_add( me, m, d, s, t, false );
 }
 
-extern void sub( struct emitter* me, struct machine* m, operand d, operand s, operand t );
 void mips_sub( struct emitter* me, struct machine* m, operand d, operand s, operand t ){
 	VALIDATE_OPERANDS( - );
 	assert( !( s.tag == OT_IMMED && t.tag == OT_IMMED ) && d.tag != OT_IMMED );
 
 	/* deal with immediate */
-	if( is_add_immed( s ) ){
+	if( is_add_immed( s ) ){	// TODO: add_immed doesn't take into account future negation
 		s.k = -s.k;
 		do_add( me, m, d, t, s, true ); 
 	} else if( is_add_immed( t ) ) {
 		t.k = -t.k;
 		do_add( me, m, d, s, t, false );
 	} else {
-		struct aq_reg a = acquire_reg( me, m, &d, &s, &t, true );
-		assert( d.tag == OT_REG && s.tag == OT_REG && t.tag == OT_REG );
-		EMIT( MI_SUBU( d.reg, s.reg, t.reg ) );	
-		release_reg( me, m, d, a ); 
-//		sub( me, m, d, s, t );	
+		do_nonimm_bop( me, m, d, s, t, MOP_SPECIAL_SUBU, MOP_SPECIAL, false, false );
 	}
+
+}
+
+void mips_mul( struct emitter* me, struct machine* m, operand d, operand s, operand t ){
+	do_nonimm_bop( me, m, d, s, t, MOP_SPECIAL2_MUL, MOP_SPECIAL2, false, false );
+}
+
+void mips_div( struct emitter* me, struct machine* m, operand d, operand s, operand t ){
+	do_nonimm_bop( me, m, d, s, t, MOP_SPECIAL_DIV, MOP_SPECIAL, true, true );
+}
+
+void mips_mod( struct emitter* me, struct machine* m, operand d, operand s, operand t ){
+	do_nonimm_bop( me, m, d, s, t, MOP_SPECIAL_DIV, MOP_SPECIAL, true, false );
+}
+
+
+void mips_pow( struct emitter* me, struct machine* m, operand d, operand s, operand t ){
 
 }
