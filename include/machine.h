@@ -30,16 +30,23 @@ struct machine {
 	uint32_t 	reg[];		// upper 2 words are free for emitter use for temp allocation
 };
 
+/*
+* Generic integer machine. Assume 2's complement and overflow is ignored therfore:
+* - Signed and unsigned add, sub, multiply ( therefore pow ) are equivalent.  
+* - Branch compare instructions rely on add,sub and therefore are signed/unsigned indifferent.
+* - TODO: define mod as Lua one  
+*/
 struct machine_ops {
 	void (*move)( struct emitter* me, struct machine* m, operand d, operand s );
 
 	/*
-	* Compulsory arithmetic 
+	* Compulsory arithmetic. 
 	*/
 	void (*add)( struct emitter* me, struct machine* m, operand d, operand s, operand t );
 	void (*sub)( struct emitter* me, struct machine* m, operand d, operand s, operand t );
 	void (*mul)( struct emitter* me, struct machine* m, operand d, operand s, operand t );
-	void (*div)( struct emitter* me, struct machine* m, operand d, operand s, operand t );
+	void (*sdiv)( struct emitter* me, struct machine* m, operand d, operand s, operand t );
+	void (*udiv)( struct emitter* me, struct machine* m, operand d, operand s, operand t );
 	void (*mod)( struct emitter* me, struct machine* m, operand d, operand s, operand t );
 	void (*pow)( struct emitter* me, struct machine* m, operand d, operand s, operand t );
 

@@ -155,8 +155,7 @@ void mips_mul( struct emitter* me, struct machine* m, operand d, operand s, oper
 		swap( s, t );
 	
 	if( is_add_immed( t ) && ispowerof2( t.k ) ){
-		int sk = ilog2( t.k );	
-
+		const int sk = ilog2( t.k );	
 		struct aq_reg a = acquire_reg( me, m, &d, &s, &t, true );
 		assert( d.tag == OT_REG && s.tag == OT_REG && t.tag == OT_IMMED );		
 		EMIT( MI_SLL( d.reg, s.reg, sk ) );
@@ -166,8 +165,33 @@ void mips_mul( struct emitter* me, struct machine* m, operand d, operand s, oper
 	}
 }
 
-void mips_div( struct emitter* me, struct machine* m, operand d, operand s, operand t ){
-	do_nonimm_bop( me, m, d, s, t, MOP_SPECIAL_DIV, MOP_SPECIAL, true, true );
+static void mips_div( struct emitter* me, struct machine* m, operand d, operand s, operand t, bool issigned ){
+	if( is_add_immed( t ) && ispowerof2( t.k ) ){
+		/* IS IT SIGNED OR UNSIGNED? */
+		const int sk = ilog2( t.k );	
+		struct aq_reg a = acquire_reg( me, m, &d, &s, &t, true );
+		assert( d.tag == OT_REG && s.tag == OT_REG && t.tag == OT_IMMED );		
+
+		if( issigned )
+			EMIT( MI_SRA( d.reg, s.reg, sk ) );
+		else
+			EMIT( MI_SRL( d.reg, s.reg, sk ) );
+
+		release_reg( me, m, d, a ); 
+	} else {
+		if( issigned )
+			do_nonimm_bop( me, m, d, s, t, MOP_SPECIAL_DIV, MOP_SPECIAL, true, true );
+		else
+			do_nonimm_bop( me, m, d, s, t, MOP_SPECIAL_DIVU, MOP_SPECIAL, true, true );
+	}
+}
+
+void mips_sdiv( struct emitter* me, struct machine* m, operand d, operand s, operand t ){
+	mips_div( me, m, d, s, t, true );
+}
+
+void mips_udiv( struct emitter* me, struct machine* m, operand d, operand s, operand t ){
+	mips_div( me, m, d, s, t, false );
 }
 
 void mips_mod( struct emitter* me, struct machine* m, operand d, operand s, operand t ){

@@ -67,7 +67,7 @@ void emit_mul( struct emitter** mce, struct machine_ops* mop, struct frame* f, l
 }
 
 void emit_div( struct emitter** mce, struct machine_ops* mop, struct frame* f, loperand d, loperand s, loperand t ){
-	emit_bop( REF, f, d, s, t, mop->div );
+	emit_bop( REF, f, d, s, t, mop->sdiv );
 }
 
 void emit_mod( struct emitter** mce, struct machine_ops* mop, struct frame* f, loperand d, loperand s, loperand t ){

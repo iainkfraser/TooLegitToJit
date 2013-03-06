@@ -51,8 +51,10 @@
 	( GEN_MIPS_OPCODE_3REG( primaryop, rs, rt, rd, secondaryop ) | ( ( tertop & 0x3f ) << 6 ) )
 
 #define MOP_SPECIAL		0
-#define		MOP_SPEICAL_SLL		0
+#define		MOP_SPECIAL_SLL		0
+#define		MOP_SPECIAL_SRL		2
 #define		MOP_SPECIAL_ROTR	2
+#define		MOP_SPECIAL_SRA		3
 #define		MOP_SPECIAL_SLLV	4
 #define 	MOP_SPECIAL_SRLV	6
 #define 	MOP_SPECIAL_JR		8
@@ -61,7 +63,7 @@
 #define		MOP_SPECIAL_MFHI	16	
 #define		MOP_SPECIAL_MFLO	18
 #define		MOP_SPECIAL_DIV		26	
-#define 	MOP_SPEICAL_DIVU	27
+#define 	MOP_SPECIAL_DIVU	27
 #define		MOP_SPECIAL_ADD		32	
 #define		MOP_SPECIAL_ADDU	33
 #define		MOP_SPECIAL_SUB		34
@@ -127,7 +129,10 @@
 #define MI_NOP()		MOP_NOP
 #define MI_NOR( rd, rs, rt )	GEN_MIPS_OPCODE_3REG( MOP_SPECIAL, rs, rt, rd, MOP_SPECIAL_NOR ) 
 #define MI_NOT( rd, rs )	MI_NOR( rd, rs, _zero ) 
-#define MI_SLL( rd, rt, sa )	GEN_MIPS_OPCODE_3REG_TERT( MOP_SPECIAL, _zero, rt, rd, MOP_SPEICAL_SLL, sa ) 
+#define MI_ROTR( rd, rt, sa )	GEN_MIPS_OPCODE_3REG_TERT( MOP_SPECIAL, 1, rt, rd, MOP_SPECIAL_SRL, sa ) 
+#define MI_SLL( rd, rt, sa )	GEN_MIPS_OPCODE_3REG_TERT( MOP_SPECIAL, _zero, rt, rd, MOP_SPECIAL_SLL, sa ) 
+#define MI_SRA( rd, rt, sa )	GEN_MIPS_OPCODE_3REG_TERT( MOP_SPECIAL, _zero, rt, rd, MOP_SPECIAL_SRA, sa ) 
+#define MI_SRL( rd, rt, sa )	GEN_MIPS_OPCODE_3REG_TERT( MOP_SPECIAL, _zero, rt, rd, MOP_SPECIAL_SRL, sa ) 
 #define MI_SUBU( rd, rs, rt ) 	GEN_MIPS_OPCODE_3REG( MOP_SPECIAL, rs, rt, rd, MOP_SPECIAL_SUBU ) 
 #define MI_SW( rt, base, off )	GEN_MIPS_OPCODE_2REG( MOP_SW, base, rt, (int16_t)(off) )
 

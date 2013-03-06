@@ -76,7 +76,7 @@ static void precall( struct machine_ops* mop, struct emitter* e, struct frame* f
 		// 2 becuase 8 for (ebp,closure) another 8 for the function being called ( rem actual args = args - 1 )
 		mop->add( e, f->m, rargs[ RA_NR_ARGS ], OP_TARGETREG( f->m->fp ), OP_TARGETIMMED( -8 * ( 2 + vregbase ) ) );
 		mop->sub( e, f->m, rargs[ RA_NR_ARGS ], rargs[ RA_NR_ARGS ], OP_TARGETREG( f->m->sp ) );	
-		mop->div( e, f->m, rargs[ RA_NR_ARGS ], rargs[ RA_NR_ARGS ], OP_TARGETIMMED( 8 ) );
+		mop->udiv( e, f->m, rargs[ RA_NR_ARGS ], rargs[ RA_NR_ARGS ], OP_TARGETIMMED( 8 ) );
 	}
 
 	// calcualte base address	
