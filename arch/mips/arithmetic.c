@@ -151,6 +151,7 @@ void mips_sub( struct emitter* me, struct machine* m, operand d, operand s, oper
 }
 
 void mips_mul( struct emitter* me, struct machine* m, operand d, operand s, operand t ){
+	VALIDATE_OPERANDS( * );
 	if( is_add_immed( s ) && ispowerof2( s.k ) )
 		swap( s, t );
 	
@@ -166,6 +167,7 @@ void mips_mul( struct emitter* me, struct machine* m, operand d, operand s, oper
 }
 
 static void mips_div( struct emitter* me, struct machine* m, operand d, operand s, operand t, bool issigned ){
+	VALIDATE_OPERANDS( / );
 	if( is_add_immed( t ) && ispowerof2( t.k ) ){
 		/* IS IT SIGNED OR UNSIGNED? */
 		const int sk = ilog2( t.k );	
@@ -195,6 +197,7 @@ void mips_udiv( struct emitter* me, struct machine* m, operand d, operand s, ope
 }
 
 void mips_smod( struct emitter* me, struct machine* m, operand d, operand s, operand t ){
+	VALIDATE_OPERANDS( % );
 	do_nonimm_bop( me, m, d, s, t, MOP_SPECIAL_DIV, MOP_SPECIAL, true, false );
 }
 
@@ -203,5 +206,5 @@ void mips_umod( struct emitter* me, struct machine* m, operand d, operand s, ope
 }
 
 void mips_pow( struct emitter* me, struct machine* m, operand d, operand s, operand t ){
-
+	// TODO: 
 }

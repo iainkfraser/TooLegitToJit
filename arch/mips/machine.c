@@ -13,6 +13,7 @@
 #include "arch/mips/regdef.h"
 #include "arch/mips/opcodes.h"
 #include "arch/mips/arithmetic.h"
+#include "arch/mips/branch.h"
 
 // use the sp variable in machine struct 
 #undef sp
@@ -89,148 +90,6 @@ void move( struct emitter* me, struct machine* m, operand d, operand s ){
 	}
 }
 
-/*
-* Binary arithmetic operators
-*/
-
-
-static void do_bop( struct emitter* me, struct machine* m, operand d, operand s, operand t, int op, int special ){
-	assert( d.tag == OT_REG || d.tag == OT_DIRECTADDR );
-
-/*	int t0 = acquire_temp( _MOP, me, m );
-	int t1 = acquire_temp( _MOP, me, m );
-
-	loadreg( me, m, &s, t0, false );
-	loadreg( me, m, &t, t1, false ); */
-
-	int temps = load_coregisters( _MOP, me, m, 2, &s, &t );
-
-	assert( s.tag == OT_REG && t.tag == OT_REG );
-
-	int dreg = d.tag == OT_REG ? d.reg : s.reg;
-	ENCODE_OP( me, GEN_MIPS_OPCODE_3REG( special, s.reg, t.reg, dreg, op ) );
-
-	if( d.tag == OT_DIRECTADDR )		// | sw reg, d.addr 
-		ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( MOP_SW, d.base, dreg, d.offset ) );
-
-	unload_coregisters( _MOP, me, m, temps );
-}
-
-static void do_div( struct emitter *me, struct machine* m, operand d, operand s, operand t, bool islow  ){
-	operand nil = OP_TARGETREG( _zero );	// dst is in hi and lo see instruction encoding
-	do_bop( me, m, nil, s, t, MOP_SPECIAL_DIV, MOP_SPECIAL );
-
-	operand src = d;
-	int temps = load_coregisters( _MOP, me, m, 1, &src );
-
-	// load the quotient into the dest
-	ENCODE_OP( me, GEN_MIPS_OPCODE_3REG( MOP_SPECIAL, _zero, _zero, src.reg, islow ? MOP_SPECIAL_MFLO : MOP_SPECIAL_MFHI ) );
-
-	if( d.tag != OT_REG )
-		move( me, m, d, src );
-
-	unload_coregisters( _MOP, me, m , temps );	
-}
-
-
-static void add( struct emitter* me, struct machine* m, operand d, operand s, operand t ){
-	do_bop( me, m, d, s, t, MOP_SPECIAL_ADDU, MOP_SPECIAL );
-}
-
-static void sub( struct emitter* me, struct machine* m, operand d, operand s, operand t ){
-	do_bop( me, m, d, s, t, MOP_SPECIAL_SUBU, MOP_SPECIAL );
-}
-
-static void mul( struct emitter* me, struct machine* m, operand d, operand s, operand t ){
-	do_bop( me, m, d, s, t, MOP_SPECIAL2_MUL, MOP_SPECIAL2 );
-}
-
-static void divide( struct emitter* me, struct machine* m, operand d, operand s, operand t ){
-	do_div( me, m, d, s, t, true );
-}
-
-static void mod( struct emitter* me, struct machine* m, operand d, operand s, operand t ){
-	do_div( me, m, d, s, t, false );
-}
-
-static void power( struct emitter* me, struct machine* m, operand d, operand s, operand t ){
-
-}
-
-/*
-* Branching 
-*/
-
-static int branch( struct emitter* me, label l ){
-	switch( l.tag ){
-		case LABEL_LOCAL:
-			me->ops->branch_local( me, l.local, l.isnext );
-			break;
-		case LABEL_PC:
-			me->ops->branch_pc( me, l.vline );
-			break;
-		case LABEL_EC:
-			return l.ec - ( me->ops->ec( me ) + 1 ); 		
-	}
-
-	return 0;
-}
-
-void b( struct emitter* me, struct machine* m, label l ){
-	EMIT( MI_B( branch( me, l ) ) );
-	EMIT( MI_NOP() );
-}
-
-
-static void beq( struct emitter* me, struct machine* m, operand d, operand s, label l ){
-	int temps = load_coregisters( _MOP, me, m, 2, &d, &s );
-
-	EMIT( MI_BEQ( d.reg, s.reg, branch( me, l ) ) );
-	EMIT( MI_NOP( ) );
-	
-	unload_coregisters( _MOP, me, m, temps );
-}
-
-static void blt( struct emitter* me, struct machine* m, operand d, operand s, label l ){
-	operand otemp = OP_TARGETREG( acquire_temp( _MOP, me, m ) );
-	assert( otemp.tag == OT_REG );
-
-	sub( me, m, otemp, d, s );
-	
-	EMIT( MI_BLTZ( otemp.reg, branch( me, l ) ) );
-	EMIT( MI_NOP( ) );
-
-	release_temp( _MOP, me, m );
-}
-
-static void bgt( struct emitter* me, struct machine* m, operand d, operand s, label l ){
-	operand otemp = OP_TARGETREG( acquire_temp( _MOP, me, m ) );
-	assert( otemp.tag == OT_REG );
-
-	sub( me, m, otemp, d, s );
-	
-	EMIT( MI_BGTZ( otemp.reg, branch( me, l ) ) );
-	EMIT( MI_NOP( ) );
-
-	release_temp( _MOP, me, m );
-}
-
-static void ble( struct emitter* me, struct machine* m, operand d, operand s, label l ){
-	;
-}
-
-static void bge( struct emitter* me, struct machine* m, operand d, operand s, label l ){
-	operand otemp = OP_TARGETREG( acquire_temp( _MOP, me, m ) );
-	assert( otemp.tag == OT_REG );
-
-	sub( me, m, otemp, d, s );
-	
-	EMIT( MI_BGEZ( otemp.reg, branch( me, l ) ) );
-	EMIT( MI_NOP( ) );
-
-	release_temp( _MOP, me, m );
-}
-
 
 static void call( struct emitter* me, struct machine* m, operand fn ){
 	int temps = load_coregisters( _MOP, me, m, 1, &fn );
@@ -293,12 +152,12 @@ struct machine_ops mips_ops = {
 	.umod = mips_umod,
 	.smod = mips_smod,
 	.pow = mips_pow,
-	.b = b,
-	.beq = beq,
-	.blt = blt,
-	.bgt = bgt,
-	.ble = ble,
-	.bge = bge,
+	.b = mips_b,
+	.beq = mips_beq,
+	.blt = mips_blt,
+	.bgt = mips_bgt,
+	.ble = mips_ble,
+	.bge = mips_bge,
 	.call = call,
 	.ret = ret,
 	.call_cfn = call_cfn, 
