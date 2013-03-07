@@ -90,7 +90,7 @@ struct machine_ops {
 
 int temps_accessed( struct machine* m );
 int acquire_temp( struct machine_ops* mop, struct emitter* e, struct machine* m );
-void release_temp( struct machine_ops* mop, struct emitter* e, struct machine* m );
+bool release_temp( struct machine_ops* mop, struct emitter* e, struct machine* m );
 void release_tempn( struct machine_ops* mop, struct emitter* e, struct machine* m, int n );
 bool is_temp( struct machine* m, int reg );
 

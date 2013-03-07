@@ -54,7 +54,7 @@ int acquire_temp( struct machine_ops* mop, struct emitter* e, struct machine* m 
 	return reg; 
 }
 
-void release_temp( struct machine_ops* mop, struct emitter* e, struct machine* m ) {
+bool release_temp( struct machine_ops* mop, struct emitter* e, struct machine* m ) {
 	int i,rc, reg;
 
 	for( i = 0; i < m->nr_temp_regs - 1; i++ ){
@@ -76,7 +76,9 @@ void release_temp( struct machine_ops* mop, struct emitter* e, struct machine* m
 		restore_spill( m, prior );
 	}
 
-	m->reg[i] = SET_REFCOUNT( m->reg[i], rc );	
+	m->reg[i] = SET_REFCOUNT( m->reg[i], rc );
+
+	return rc >= 0;	
 }
 
 
