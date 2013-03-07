@@ -136,14 +136,13 @@ static void mips_inequality( struct emitter* me, struct machine* m, operand s, o
 	if( iss && ist )
 		release_temp( _MOP, me, m ); 
 
-	GEN_MIPS_OPCODE_2REG( op, d.reg, subop, branch( me, l ) );
+	ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( op, d.reg, subop, branch( me, l ) ) );
 
-	if( iss || ist ){
-		if( !release_temp( _MOP, me, m ) )
-			EMIT( MI_NOP() );
-	} else	{
+	if( iss || ist )
+		RELEASE_OR_NOP( me, m );
+	else
 		mips_add( me, m, d, d, t );	
-	}
+	
 } 
 
 
