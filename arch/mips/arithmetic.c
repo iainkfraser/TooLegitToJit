@@ -29,9 +29,20 @@ struct machine_ops mips_ops;
 	}while( 0 )
 
 // can the operand be used in addi instruction?
-static bool is_add_immed( operand o ){
+bool is_add_immed( operand o ){
 	return o.tag == OT_IMMED && ( o.k >= -32768 && o.k <= 32767 );
 }
+
+
+bool is_sub_immed( operand o ){
+	if( o.tag == OT_IMMED ){
+		o.k = -o.k;
+		return is_add_immed( o );
+	}
+	
+	return false;
+}
+
 
 struct aq_reg {
 	operand d;	// original destination 
@@ -138,10 +149,10 @@ void mips_sub( struct emitter* me, struct machine* m, operand d, operand s, oper
 	assert( !( s.tag == OT_IMMED && t.tag == OT_IMMED ) && d.tag != OT_IMMED );
 
 	/* deal with immediate */
-	if( is_add_immed( s ) ){	// TODO: add_immed doesn't take into account future negation
+	if( is_sub_immed( s ) ){	
 		s.k = -s.k;
 		do_add( me, m, d, t, s, true ); 
-	} else if( is_add_immed( t ) ) {
+	} else if( is_sub_immed( t ) ) {
 		t.k = -t.k;
 		do_add( me, m, d, s, t, false );
 	} else {

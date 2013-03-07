@@ -64,6 +64,10 @@ static inline operand OP_TARGETIMMED( int k ){
 }
 #endif
 
+#define ISO_REG( o )	( (o).tag == OT_REG )
+#define ISO_DADDR( o )	( (o).tag == OT_DIRECTADDR )
+#define ISO_IMMED( o )	( (o).tag == OT_IMMED )
+
 /*
 * Generic machine label
 */
