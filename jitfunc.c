@@ -9,11 +9,15 @@
 #include "macros.h"
 
 extern void jinit_cpy_arg_res( struct JFunc* jf, struct machine_ops* mop, struct emitter* e, struct machine* m );
+extern void jinit_store_regs( struct JFunc* jf, struct machine_ops* mop, struct emitter* e, struct machine* m );
+extern void jinit_load_regs( struct JFunc* jf, struct machine_ops* mop, struct emitter* e, struct machine* m );
 
 static struct JFunc jit_functions[ JF_COUNT ];
 static char* jfuncs_code;
 static jf_init jinittable[ JF_COUNT ] = {
-	[ JF_ARG_RES_CPY ] = &jinit_cpy_arg_res 
+	[ JF_ARG_RES_CPY ] = &jinit_cpy_arg_res
+	,[ JF_STORE_LOCALS ] = &jinit_store_regs
+	,[ JF_LOAD_LOCALS ] = &jinit_load_regs 
 }; 
 
 
@@ -24,7 +28,7 @@ struct emitter* jfuncs_init( struct machine_ops* mop, struct machine* m ){
 
 	mop->create_emitter( &e, 0 );
 
-	for( int i = 0; i < JF_COUNT; i++ ){
+	for( int i = 0; i < JF_COUNT; i++, j++ ){
 		j->addr = e->ops->ec( e );
 	
 		assert( temps_accessed( m ) == 0 );
@@ -51,8 +55,8 @@ struct JFunc* jfuncs_get( int idx ){
 	return &jit_functions[ idx ];
 }
 
-void* jfuncs_addr( int idx ){
-	return jfuncs_code  + jfuncs_get( idx )->addr; 
+void* jfunc_addr( int idx ){
+	return jfuncs_code  + jfuncs_get( idx )->addr * 4;	// TODO: emitter should do this in generic sense 
 }
 
 int jfuncs_temp_clobber( struct machine* m, int idx ){
@@ -69,13 +73,13 @@ int jfuncs_stack_clobber( struct machine* m, int idx ){
 *	- Make sure none of the input args are clobbered by the call.
 * For faster compile times these constraints can't be skipped.  
 */
-void jfunc_call( struct machine_ops* mop, struct emitter* e, struct machine* m, int idx, int maxstack, int nargs, ... ){
+void jfunc_call( struct machine_ops* mop, struct emitter* e, struct machine* m, int idx, int off, int maxstack, int nargs, ... ){
 	int callspill = 0;
 
 	// TODO: check constraints 
 
 	// max_access check spill
-	mop->call( e, m, OP_TARGETIMMED( (uintptr_t)jfuncs_addr( idx ) ) );
+	mop->call( e, m, OP_TARGETIMMED( (uintptr_t)jfunc_addr( idx ) + 4 * off ) );	// TODO: emitter should do mul
 	// check spill
 
 	// TODO: proper error handling 

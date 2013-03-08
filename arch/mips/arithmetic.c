@@ -49,14 +49,6 @@ struct aq_reg {
 	int 	n;	// number of temps
 };
 
-/*
-* TODO: 
-* fix bug when one of the operands is same reg as destination
-* have mul and div be smart with multiples of 2
-* fix the potential bug when checking for immed of negative pre negation
-* Update branching to satisfy constraints set by generic machine
-* Start work on smart generic register spill jit function
-*/
 
 static struct aq_reg acquire_reg( struct emitter* e, struct machine* m, operand* d, operand* s, operand* t, bool allowimmed ){
 	assert( d->tag != OT_IMMED && s->tag != OT_IMMED );

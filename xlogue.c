@@ -118,7 +118,7 @@ static void postcall( struct machine_ops* mop, struct emitter* e, struct frame* 
 	}
 
 
-	jfunc_call( mop, e, f->m, JF_ARG_RES_CPY, maxstack, 4, rargs[ RA_SRC ], rargs[ RA_DST ], 
+	jfunc_call( mop, e, f->m, JF_ARG_RES_CPY, 0, maxstack, 4, rargs[ RA_SRC ], rargs[ RA_DST ], 
 						rargs[ RA_EXPECT ], rargs[ RA_EXIST ] );
 	prefer_nontemp_release_reg( mop, e, f->m, RA_SIZE );
 }
@@ -143,7 +143,12 @@ void do_ret( struct machine_ops* mop, struct emitter* e, struct frame* f, int vr
 	* use as many temps as it wants before we reserve them for return procedure. 
 	*/
 	if( nret > 0 ) 
-		save_frame_limit( mop, e, f, vregbase, nret - 1 );	// NOT SIZE BUT LAST
+#if 1
+		save_frame_limit( mop, e, f, vregbase, nret - 1 );
+#else
+		// TODO: the above is from vregbase - so need to think about this one
+		jfunc_call( mop, e, f->m, JF_STORE_LOCALS, jf_storelocal_offset( f->m, nret - 1 ), JFUNC_UNLIMITED_STACK, 0 );
+#endif
 
 	operand rargs[ RA_COUNT ];
 	prefer_nontemp_acquire_reg( mop, e, f->m, RA_COUNT, rargs );
@@ -187,11 +192,15 @@ void prologue( struct machine_ops* mop, struct emitter* e, struct frame* f ){
 		mop->add( e, f->m, rargs[ RA_DST ], OP_TARGETREG( basestack.value.base ), OP_TARGETIMMED( basestack.value.offset ) );
 		mop->move( e, f->m, rargs[ RA_EXPECT ], OP_TARGETIMMED( nparams ) );
 		
-		jfunc_call( mop, e, f->m, JF_ARG_RES_CPY, maxstack, 4, rargs[ RA_SRC ], rargs[ RA_DST ], 
+		jfunc_call( mop, e, f->m, JF_ARG_RES_CPY, 0, maxstack, 4, rargs[ RA_SRC ], rargs[ RA_DST ], 
 							rargs[ RA_EXPECT ], rargs[ RA_EXIST ] );
 		prefer_nontemp_release_reg( mop, e, f->m, RA_SIZE );
-	 	
+
+#if 0	 	
 		load_frame_limit( mop, e, f, 0, nparams );	// load locals living in registers 
+#else
+		jfunc_call( mop, e, f->m, JF_LOAD_LOCALS, jf_loadlocal_offset( f->m, nparams ), maxstack, 0 );
+#endif
 	}
 }
 

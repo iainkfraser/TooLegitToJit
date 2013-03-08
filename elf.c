@@ -112,7 +112,7 @@ static int dump_symboltable_jfuncs( FILE* f, int secidx ){
 	for( int i = 0; i < JF_COUNT; i++ ){
 		struct JFunc* j = jfuncs_get( i );
 
-		dump_symbol_localfunc( f, j->strtabidx, j->addr, secidx );
+		dump_symbol_localfunc( f, j->strtabidx, jfunc_addr( i ) - jfunc_addr( 0 ), secidx );
 	}
 
 	return JF_COUNT;
