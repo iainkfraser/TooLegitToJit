@@ -22,11 +22,11 @@ static jf_init jinittable[ JF_COUNT ] = {
 
 
 
-struct emitter* jfuncs_init( struct machine_ops* mop, struct machine* m ){
+struct emitter* jfuncs_init( struct machine_ops* mop, struct machine* m, e_realloc era ){
 	struct emitter* e;
 	struct JFunc *j = jit_functions;
 
-	mop->create_emitter( &e, 0 );
+	mop->create_emitter( &e, 0, era );
 
 	for( int i = 0; i < JF_COUNT; i++, j++ ){
 		j->addr = e->ops->ec( e );

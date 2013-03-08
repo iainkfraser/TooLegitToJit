@@ -20,7 +20,7 @@ struct JFunc {
 
 enum { JF_ARG_RES_CPY, JF_STORE_LOCALS, JF_LOAD_LOCALS, JF_COUNT };
 
-struct emitter* jfuncs_init( struct machine_ops* mop, struct machine* m );
+struct emitter* jfuncs_init( struct machine_ops* mop, struct machine* m, e_realloc era );
 void jfuncs_setsection( void* section );
 void jfuncs_cleanup( );
 struct JFunc* jfuncs_get( int idx );

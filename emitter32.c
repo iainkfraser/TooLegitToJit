@@ -68,20 +68,22 @@ static size_t link( struct emitter* e ){
 		free( b );
 	}
 
+	// free excess memory used by double growth
+	e->realloc( SELF->mcode, SELF->bufsize, SELF->size );
+
 	return SELF->size;
 }
 
-static void* stop( struct emitter* e, void* buf, unsigned int startec ){
-	memcpy( buf, SELF->mcode, SELF->size );
-	int jmp = startec * 4;
+static void* offset( struct emitter* e, int offset ){
+	int jmp = offset * 4;
+	return (char*)SELF->mcode + jmp; 
+}
 
+static void cleanup( struct emitter* e ){
 	// TODO: free the local labels list
-
-	free( SELF->mcode );
+//	free( SELF->mcode );		FREE IS DONE BY USER
 	free( SELF->jt );
 	free( SELF );
-
-	return (char*)buf + jmp; 
 }
 
 static void label_pc( struct emitter* e, unsigned int pc ){
@@ -135,7 +137,8 @@ static unsigned int ec( struct emitter* e ){
 
 static struct emitter_ops vtable = {
 	.link = &link,
-	.stop = &stop,
+	.offset = &offset, 
+	.cleanup = &cleanup,
 	.label_pc = &label_pc,
 	.label_local = &label_local,
 	.branch_pc = &branch_pc,
@@ -144,14 +147,14 @@ static struct emitter_ops vtable = {
 };
 
 
-void emitter32_create( struct emitter** e, size_t vmlines ){
+void emitter32_create( struct emitter** e, size_t vmlines, e_realloc era ){
 	const int jtsz = vmlines * 4;
 
 	*e = malloc( sizeof( struct emitter32 ) );
 	assert( *e );			// TODO: error checking 	
 	
 	struct emitter32* self = ( struct emitter32* ) *e;
-
+	self->e.realloc = era;
 	self->e.ops = &vtable;
 	self->mcode = NULL;
 	self->size = 0;
@@ -199,13 +202,14 @@ static uint32_t find_local_label( struct emitter32* e, int pc, int local, bool i
 */
 
 
+// below updated to use generic reallocator 
 #define DASM_M_GROW( t, p, sz, need) \
   do { \
     size_t _sz = (sz), _need = (need); \
     if (_sz < _need) { \
       if (_sz < 16) _sz = 16; \
       while (_sz < _need) _sz += _sz; \
-      (p) = (t *)realloc((p), _sz); \
+      (p) = (t *)e->realloc((p), _sz / 2, _sz); \
       if ((p) == NULL) exit(1); \
       (sz) = _sz; \
     } \

@@ -8,7 +8,7 @@
 
 #include "emitter.h"
 
-void emitter32_create( struct emitter** e, size_t vmlines );
+void emitter32_create( struct emitter** e, size_t vmlines, e_realloc era );
 void ENCODE_OP( struct emitter* e, uint32_t value );
 
 #define ENCODE_DATA( mc, value )	ENCODE_OP( mc, value )

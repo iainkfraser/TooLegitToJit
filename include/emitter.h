@@ -13,10 +13,13 @@
 #define NR_LOCAL_LABELS		10
 
 struct emitter;
+typedef void* (*e_realloc)( void*, size_t, size_t );	// emitter reallactor 
+
 
 struct emitter_ops {
 	size_t (*link)( struct emitter* e );
-	void* (*stop)( struct emitter* e, void* buf, unsigned int startec );
+	void* (*offset )( struct emitter* e, int offset );
+	void (*cleanup)( struct emitter* e );
 
 	void (*label_pc)( struct emitter* e, unsigned int pc );
 	void (*label_local)( struct emitter* e, unsigned int local );
@@ -28,6 +31,7 @@ struct emitter_ops {
 };
 
 struct emitter {
+	e_realloc		realloc;	
 	struct emitter_ops*	ops;
 };
 

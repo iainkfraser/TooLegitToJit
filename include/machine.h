@@ -80,7 +80,7 @@ struct machine_ops {
 
 
 	// each machine has an associated emitter 
-	void (*create_emitter)( struct emitter** e, size_t vmlines );
+	void (*create_emitter)( struct emitter** e, size_t vmlines, e_realloc era );
 };
 
 /*

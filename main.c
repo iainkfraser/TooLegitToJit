@@ -21,7 +21,7 @@
 #include "lopcodes.h"
 #include "frame.h"
 #include "instruction.h"
-#include "user_memory.h"
+#include "mmap_alloc.h"
 #include "list.h"
 #include "macros.h"
 #include "jitfunc.h"
@@ -31,7 +31,8 @@ struct code_alloc {
 	void* ( *alloc )( size_t );
 	void  ( *free )( void*, size_t );
 	void  ( *execperm )( void*, size_t ); 
-};;
+	void*  ( *realloc )( void*, size_t, size_t );
+};
 
 #define member_size(type, member) sizeof(((type *)0)->member)
 #define do_load_member( type, member, ptr, f )	fread( &ptr -> member, member_size( type, member ), 1, f )
@@ -188,7 +189,7 @@ int load_code( FILE* f, struct proto* p, struct code_alloc* ca, struct machine* 
 
 	// prepare function machine code emitter
 	load_member( p, sizecode, f );
-	mop->create_emitter( &mce, p->sizecode );
+	mop->create_emitter( &mce, p->sizecode, ca->realloc );
 
 	// Skip over code. Rewind after constants loaded 
 	seek = ftell( f );
@@ -312,13 +313,12 @@ int load_code( FILE* f, struct proto* p, struct code_alloc* ca, struct machine* 
 	emit_footer( mop, mce, &fr );
 	
 	p->sizemcode = mce->ops->link( mce );
-	p->code = ca->alloc( p->sizemcode );
-	if( !p->code )
-		assert( 0 );	
-
-	p->code_start = mce->ops->stop( mce, p->code, code_start( &fr ) );
+	p->code = mce->ops->offset( mce, 0 );
+	p->code_start = mce->ops->offset( mce, code_start( &fr ) ); 
 	if( ca->execperm )
 		ca->execperm( p->code, p->sizemcode );
+	
+	mce->ops->cleanup( mce );
 	
 
 	fseek( f, end, SEEK_SET );
@@ -422,9 +422,10 @@ int main( int argc, char* argv[] ){
 		do_fail("unable to open file");
 
 	struct code_alloc ca = {
-		.alloc = &em_alloc,
-		.free = &em_free,
-		.execperm = &em_execperm
+		.alloc = &mmap_alloc
+		,.free = &mmap_free
+		,.execperm = &mmap_execperm
+		,.realloc = &mmap_realloc
 	};
 
 
@@ -435,12 +436,10 @@ int main( int argc, char* argv[] ){
 	mips_mach.allow_spill = true;
 
 	// create jit functions 
-	struct emitter* e = jfuncs_init( &mips_ops, &mips_mach );
+	struct emitter* e = jfuncs_init( &mips_ops, &mips_mach, ca.realloc );
 	int sizemcode = e->ops->link( e );
-	void* jitfuncs = ca.alloc( sizemcode );
-	if( !jitfuncs )
-		assert( 0 );	
-	e->ops->stop( e, jitfuncs, 0 );
+	void* jitfuncs = e->ops->offset( e, 0 );
+	e->ops->cleanup( e );
 	if( ca.execperm )
 		ca.execperm( jitfuncs, sizemcode );
 	jfuncs_setsection( jitfuncs );
