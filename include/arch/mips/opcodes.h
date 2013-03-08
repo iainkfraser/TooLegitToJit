@@ -83,9 +83,10 @@
 #define MOP_BLTZ		1
 #define		MOP_BLTZ_RT			0
 #define MOP_BGEZ		1	
-#define		MOP_BGEZ_RT			1			
+#define		MOP_BGEZ_RT			1		
 #define		MOP_COND_BRANCH_OP1_TRAP_START	8
 #define		MOP_COND_BRANCH_OP1_TRAP_END	14
+#define		MOP_BGEZAL			17	
 #define	MOP_J			2
 #define	MOP_JAL			3
 #define MOP_BEQ			4
@@ -126,11 +127,11 @@
 #define MI_ADDIU( rt, rs, i )	GEN_MIPS_OPCODE_2REG( MOP_ADDIU, rs, rt, (int16_t)(i) ) 
 #define MI_ADDU( rd, rs, rt )	GEN_MIPS_OPCODE_3REG( MOP_SPECIAL, rs, rt, rd, MOP_SPECIAL_ADDU ) 
 #define MI_B( off )		GEN_MIPS_OPCODE_2REG( MOP_BEQ, 0, 0, off )
+#define MI_BAL( off )		GEN_MIPS_OPCODE_2REG( MOP_BGTZ, 0, MOP_BGTZL, off ) 
 #define MI_BEQ( rs, rt, off )	GEN_MIPS_OPCODE_2REG( MOP_BEQ, rs, rt, off )
 #define MI_BLTZ( rs, off )	GEN_MIPS_OPCODE_2REG( MOP_BLTZ, rs, 0, off )
 #define MI_BGEZ( rs, off )	GEN_MIPS_OPCODE_2REG( 1, rs, MOP_BGEZ, off ) 
 #define MI_BGTZ( rs, off )	GEN_MIPS_OPCODE_2REG( MOP_BGTZ, rs, 0, off )
-#define MI_JAL( addr )		GEN_MIPS_OPCODE_ABS( MOP_JAL, ( ( addr ) >> 2 ) ) 	// the ABS does the anding
 #define MI_JALR( rs )		GEN_MIPS_OPCODE_3REG( MOP_SPECIAL, rs, _zero, _ra, MOP_SPECIAL_JALR )
 #define MI_JR( rs )		GEN_MIPS_OPCODE_3REG( MOP_SPECIAL, rs, 0, 0, MOP_SPECIAL_JR )
 #define MI_LW( rt, base, off )	GEN_MIPS_OPCODE_2REG( MOP_LW, base, rt, (int16_t)(off) )
@@ -146,9 +147,10 @@
 
 
 /*
-* Synthetic instructions 
+* Synthetic instructions.
 */
 #define MI_NEGU( rd, rs )	MI_SUBU( rd, _zero, rs )
-
+#define MI_JAL( addr )		GEN_MIPS_OPCODE_ABS( MOP_JAL, ( ( addr ) >> 2 ) )	// encoding does upper bit masking 
+#define MI_J( addr )		GEN_MIPS_OPCODE_ABS( MOP_J, ( ( addr ) >> 2 ) ) 
 
 #endif

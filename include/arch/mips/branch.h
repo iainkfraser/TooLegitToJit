@@ -13,5 +13,6 @@ void mips_blt( struct emitter* me, struct machine* m, operand d, operand s, labe
 void mips_bgt( struct emitter* me, struct machine* m, operand d, operand s, label l );
 void mips_ble( struct emitter* me, struct machine* m, operand d, operand s, label l );
 void mips_bge( struct emitter* me, struct machine* m, operand d, operand s, label l );
+int mips_branch( struct emitter* me, label l );
 
 #endif

@@ -32,7 +32,7 @@ extern struct machine_ops mips_ops;
 		}							\
 	}while( 0 )
 
-static int branch( struct emitter* me, label l ){
+int mips_branch( struct emitter* me, label l ){
 	switch( l.tag ){
 		case LABEL_LOCAL:
 			me->ops->branch_local( me, l.local, l.isnext );
@@ -53,10 +53,6 @@ static int branch( struct emitter* me, label l ){
 	return 0;
 }
 
-void mips_b( struct emitter* me, struct machine* m, label l ){
-	EMIT( MI_B( branch( me, l ) ) );
-	EMIT( MI_NOP() );
-}
 
 #define IS_INVERTIBLE_IMMED( t )	( is_add_immed( t ) && is_sub_immed( t ) )
 #define RELEASE_OR_NOP( me, m )				\
@@ -65,22 +61,43 @@ void mips_b( struct emitter* me, struct machine* m, label l ){
 			EMIT( MI_NOP() );		\
 	}while( 0 )
 
+void mips_b( struct emitter* me, struct machine* m, label l ){
+
+	if( !ISL_ABS( l ) ){
+		EMIT( MI_B( mips_branch( me, l ) ) );
+	} else if ( ISL_ABSDIRECT( l ) ){
+		EMIT( MI_J( l.abs.k ) );
+	} else if ( ISO_REG( l.abs ) ) {
+		EMIT( MI_JR( l.abs.reg ) );
+	} else { 
+		assert( ISO_DADDR( l.abs ) );
+		operand t = OP_TARGETREG( acquire_temp( _MOP, me, m ) );
+		move( me, m, t, l.abs );
+		EMIT( MI_JR( t.reg ) );	
+		RELEASE_OR_NOP( me, m );
+		return;
+	}
+
+	// delay slot
+	EMIT( MI_NOP() );
+}
+
 void mips_beq( struct emitter* me, struct machine* m, operand s, operand t, label l ){
 	VALIDATE_OPERANDS( == );
 	bool tried = false;
 rematch: 
 	/* try pattern matching approach to instruction selection */
 	if( ISO_REG( s ) && ISO_REG( t ) ){
-		EMIT( MI_BEQ( s.reg, t.reg, branch( me, l ) ) );
+		EMIT( MI_BEQ( s.reg, t.reg, mips_branch( me, l ) ) );
 		EMIT( MI_NOP( ) );
 	} else if ( ISO_REG( s ) && ISO_DADDR( t ) ){
 		operand temp = OP_TARGETREG( acquire_temp( _MOP, me, m ) );
 		move( me, m, temp, t ); 
-		EMIT( MI_BEQ( s.reg, temp.reg, branch( me, l ) ) );
+		EMIT( MI_BEQ( s.reg, temp.reg, mips_branch( me, l ) ) );
 		RELEASE_OR_NOP( me, m );	
 	} else if ( ISO_REG( s ) && IS_INVERTIBLE_IMMED( t ) ){
 		EMIT( MI_ADDIU( s.reg, s.reg, -t.k ) );
-		EMIT( MI_BEQ( s.reg, _zero, branch( me, l ) ) );
+		EMIT( MI_BEQ( s.reg, _zero, mips_branch( me, l ) ) );
 		EMIT( MI_ADDIU( s.reg, s.reg, t.k ) );
 	} else if ( ISO_DADDR( s ) && ISO_DADDR( t ) ){
 		operand t1 = OP_TARGETREG( acquire_temp( _MOP, me, m ) );
@@ -89,13 +106,13 @@ rematch:
 		move( me, m, t2, t ); 
 		EMIT( MI_SUBU( t1.reg, t1.reg, t2.reg ) );
 		release_temp( _MOP, me, m );
-		EMIT( MI_BEQ( t1.reg, _zero, branch( me, l ) ) );
+		EMIT( MI_BEQ( t1.reg, _zero, mips_branch( me, l ) ) );
 		RELEASE_OR_NOP( me, m );	
 	} else if ( ISO_DADDR( s ) && IS_INVERTIBLE_IMMED( t ) ){
 		operand temp = OP_TARGETREG( acquire_temp( _MOP, me, m ) );
 		move( me, m, temp, s ); 
 		EMIT( MI_ADDIU( temp.reg, temp.reg, -t.k ) );
-		EMIT( MI_BEQ( temp.reg, _zero, branch( me, l ) ) );
+		EMIT( MI_BEQ( temp.reg, _zero, mips_branch( me, l ) ) );
 		RELEASE_OR_NOP( me, m );
 	} else {
 		assert( !tried );
@@ -142,7 +159,7 @@ static void mips_inequality( struct emitter* me, struct machine* m, operand s, o
 	if( iss && ist )
 		release_temp( _MOP, me, m ); 
 
-	ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( op, d.reg, subop, branch( me, l ) ) );
+	ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( op, d.reg, subop, mips_branch( me, l ) ) );
 
 	if( iss || ist )
 		RELEASE_OR_NOP( me, m );
