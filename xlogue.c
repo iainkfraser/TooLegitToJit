@@ -160,7 +160,7 @@ void do_ret( struct machine_ops* mop, struct emitter* e, struct frame* f, int vr
 	}
 
 	mop->add( e, f->m, rargs[ RA_BASE ], OP_TARGETREG( basestack.value.base ), OP_TARGETIMMED( basestack.value.offset ) );
- 	mop->b( e, f->m, LBL_EC( f->epi ) ); 
+	mop->b( e, f->m, LBL_ABS( OP_TARGETIMMED( (uintptr_t)jfunc_addr( e, JF_EPILOGUE ) ) ) ); 
 }
 
 void prologue( struct machine_ops* mop, struct emitter* e, struct frame* f ){
@@ -205,6 +205,7 @@ void prologue( struct machine_ops* mop, struct emitter* e, struct frame* f ){
 }
 
 void epilogue( struct machine_ops* mop, struct emitter* e, struct frame* f ){
+#if 0	// epilogue is now JFunction - so shared amongst all functions 
 	const operand sp = OP_TARGETREG( f->m->sp );
 	const operand fp = OP_TARGETREG( f->m->fp );
 
@@ -212,6 +213,7 @@ void epilogue( struct machine_ops* mop, struct emitter* e, struct frame* f ){
 	mop->move( e, f->m, sp, fp );
 	pop( mop, e, f->m, fp );
 	mop->ret( e, f->m );
+#endif
 }
 
 /*
@@ -310,6 +312,17 @@ void jinit_cpy_arg_res( struct JFunc* jf, struct machine_ops* mop, struct emitte
 	release_temp( mop, e, m );	
 	prefer_nontemp_release_reg( mop, e, m, RA_SIZE );
 
+	mop->ret( e, m );
+}
+
+
+void jinit_epi( struct JFunc* jf, struct machine_ops* mop, struct emitter* e, struct machine* m ){
+	const operand sp = OP_TARGETREG( m->sp );
+	const operand fp = OP_TARGETREG( m->fp );
+
+	// reset stack 
+	mop->move( e, m, sp, fp );
+	pop( mop, e, m, fp );
 	mop->ret( e, m );
 }
 

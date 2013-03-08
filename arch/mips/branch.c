@@ -62,10 +62,10 @@ int mips_branch( struct emitter* me, label l ){
 	}while( 0 )
 
 void mips_b( struct emitter* me, struct machine* m, label l ){
-
+	
 	if( !ISL_ABS( l ) ){
 		EMIT( MI_B( mips_branch( me, l ) ) );
-	} else if ( ISL_ABSDIRECT( l ) ){
+	} else if ( ISL_ABSDIRECT( l ) ){	// TODO: make sure within 256MB region by calling MI_J_SAFE
 		EMIT( MI_J( l.abs.k ) );
 	} else if ( ISO_REG( l.abs ) ) {
 		EMIT( MI_JR( l.abs.reg ) );

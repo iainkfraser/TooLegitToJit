@@ -11,13 +11,15 @@
 extern void jinit_cpy_arg_res( struct JFunc* jf, struct machine_ops* mop, struct emitter* e, struct machine* m );
 extern void jinit_store_regs( struct JFunc* jf, struct machine_ops* mop, struct emitter* e, struct machine* m );
 extern void jinit_load_regs( struct JFunc* jf, struct machine_ops* mop, struct emitter* e, struct machine* m );
+extern void jinit_epi( struct JFunc* jf, struct machine_ops* mop, struct emitter* e, struct machine* m );
 
 static struct JFunc jit_functions[ JF_COUNT ];
 static char* jfuncs_code;
 static jf_init jinittable[ JF_COUNT ] = {
 	[ JF_ARG_RES_CPY ] = &jinit_cpy_arg_res
 	,[ JF_STORE_LOCALS ] = &jinit_store_regs
-	,[ JF_LOAD_LOCALS ] = &jinit_load_regs 
+	,[ JF_LOAD_LOCALS ] = &jinit_load_regs
+	,[ JF_EPILOGUE ] = &jinit_epi 
 }; 
 
 
