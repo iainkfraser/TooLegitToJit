@@ -73,7 +73,7 @@ static inline operand OP_TARGETIMMED( int k ){
 */
 
 typedef struct label {
-	enum{ LABEL_PC, LABEL_LOCAL, LABEL_EC } tag;
+	enum{ LABEL_PC, LABEL_LOCAL, LABEL_EC, LABEL_ABSOLUTE } tag;
 
 	union {
 		uint32_t	vline;		// pc label line 
@@ -82,6 +82,8 @@ typedef struct label {
 			uint8_t		isnext;
 		};
 		uint32_t	ec;		// code emission line
+		operand		abs;		// absolute address either direct(immed) or indirect(reg or mem). 
+		
 	};
 
 } label;
@@ -96,8 +98,15 @@ static inline label LBL_PC( uint32_t line ){ label l = { .tag = LABEL_PC, { .vli
 static inline label LBL_NEXT( uint8_t local ){ label l = { .tag = LABEL_LOCAL }; l.local = local; l.isnext = true; return l; }
 static inline label LBL_PREV( uint8_t local ){ label l = { .tag = LABEL_LOCAL }; l.local = local; l.isnext = false; return l; }
 static inline label LBL_EC( unsigned int ec ){ label l = { .tag = LABEL_EC }; l.ec = ec; return l; }
+static inline label LBL_ABS( operand abs ){ label l = { .tag = LABEL_ABSOLUTE }; l.abs = abs; return l; }
 #endif
 
+#define ISL_PC( l )	( ( l ).tag == LABEL_PC )
+#define ISL_EC( l )	( ( l ).tag == LABEL_EC )
+#define ISL_LOCAL( l )	( ( l ).tag == LABEL_LOCAL )
+#define ISL_ABS( l )	( ( l ).tag == LABEL_ABSOLUTE )
+#define ISL_ABSDIRECT( l )	( ISL_ABS( ( l ) ) && ISO_IMMED( ( l ).abs ) )
+#define ISL_ABSINDIRECT( l )	( ISL_ABS( ( l ) ) && !ISO_IMMED( ( l ).abs ) )
 
 /*
 * Generic machine Lua variable 

@@ -68,7 +68,7 @@ struct machine_ops {
 	* But after call they must be restored as usual. Also call is expected to push current
 	* return address on stack before call.  
 	*/
-	void (*call)( struct emitter* me, struct machine* m, operand fn );
+	void (*call)( struct emitter* me, struct machine* m, label l );
 	void (*ret)( struct emitter* me, struct machine* m );
 
 	// TODO: define the constraits on this

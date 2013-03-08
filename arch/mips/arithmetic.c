@@ -15,8 +15,7 @@
 #include "arch/mips/opcodes.h"
 
 extern void move( struct emitter* me, struct machine* m, operand d, operand s );
-
-struct machine_ops mips_ops;
+extern struct machine_ops mips_ops;
 
 #define _MOP	( &mips_ops )
 #define VALIDATE_OPERANDS( operator )					\

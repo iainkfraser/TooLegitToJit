@@ -313,8 +313,8 @@ int load_code( FILE* f, struct proto* p, struct code_alloc* ca, struct machine* 
 	emit_footer( mop, mce, &fr );
 	
 	p->sizemcode = mce->ops->link( mce );
-	p->code = mce->ops->offset( mce, 0 );
-	p->code_start = mce->ops->offset( mce, code_start( &fr ) ); 
+	p->code = mce->ops->offset( mce, 0, 0 );
+	p->code_start = mce->ops->offset( mce, code_start( &fr ), 0 ); 
 	if( ca->execperm )
 		ca->execperm( p->code, p->sizemcode );
 	
@@ -438,8 +438,7 @@ int main( int argc, char* argv[] ){
 	// create jit functions 
 	struct emitter* e = jfuncs_init( &mips_ops, &mips_mach, ca.realloc );
 	int sizemcode = e->ops->link( e );
-	void* jitfuncs = e->ops->offset( e, 0 );
-	e->ops->cleanup( e );
+	void* jitfuncs = e->ops->offset( e, 0, 0 );
 	if( ca.execperm )
 		ca.execperm( jitfuncs, sizemcode );
 	jfuncs_setsection( jitfuncs );
@@ -451,9 +450,10 @@ int main( int argc, char* argv[] ){
 	if( !disassem )
 		execute( &main );
 	else
-		serialise( &main, out, jitfuncs, sizemcode, &mips_mach );	
+		serialise( &main, out, jitfuncs, sizemcode, &mips_mach, e );	
 
 	// cleanup
+	e->ops->cleanup( e );
 	ca.free( jitfuncs, sizemcode );
 	cleanup( &main, &ca );
 

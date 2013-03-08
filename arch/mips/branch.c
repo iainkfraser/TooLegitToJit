@@ -19,7 +19,7 @@ extern void move( struct emitter* me, struct machine* m, operand d, operand s );
 extern bool is_add_immed( operand o );
 extern bool is_sub_immed( operand o );
 
-struct machine_ops mips_ops;
+extern struct machine_ops mips_ops;
 #define _MOP	( &mips_ops )
 #define VALIDATE_OPERANDS( operator )					\
 	do{									\
@@ -41,7 +41,13 @@ static int branch( struct emitter* me, label l ){
 			me->ops->branch_pc( me, l.vline );
 			break;
 		case LABEL_EC:
-			return l.ec - ( me->ops->ec( me ) + 1 ); 		
+			return l.ec - ( me->ops->ec( me ) + 1 ); 	
+		case LABEL_ABSOLUTE:
+			assert( ISO_IMMED( l.abs ) );	// branch ops don't do indirect for now
+			assert( false );// TODO: return difference from here to there
+			break;
+		default:
+			assert( false );	
 	}
 
 	return 0;

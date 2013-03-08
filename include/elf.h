@@ -10,7 +10,8 @@
 
 struct proto;
 struct machine;
-void serialise( struct proto* main, char* filepath, void *jsection, size_t jsize, struct machine* m );
+struct emitter;
+void serialise( struct proto* main, char* filepath, void *jsection, size_t jsize, struct machine* m, struct emitter* e );
 
 #define ELF_MAGICSIZE		4
 

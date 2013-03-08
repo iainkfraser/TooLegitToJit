@@ -14,6 +14,7 @@
 #include "arch/mips/opcodes.h"
 #include "arch/mips/arithmetic.h"
 #include "arch/mips/branch.h"
+#include "arch/mips/call.h"
 
 // use the sp variable in machine struct 
 #undef sp
@@ -91,24 +92,6 @@ void move( struct emitter* me, struct machine* m, operand d, operand s ){
 }
 
 
-static void call( struct emitter* me, struct machine* m, operand fn ){
-	int temps = load_coregisters( _MOP, me, m, 1, &fn );
-
-	EMIT( MI_SW( _ra, m->sp, -4 ) );		// DO NOT PUT in delay slot because ra already overwritten.
-	EMIT( MI_JALR( fn.reg ) );
-	EMIT( MI_ADDIU( m->sp, m->sp, -4 ) );	// delay slot
-	EMIT( MI_LW( _ra, m->sp, 0 ) );
-	EMIT( MI_ADDIU( m->sp, m->sp, 4 ) );
-
-	unload_coregisters( _MOP, me, m, temps );
-}
-
-static void ret( struct emitter* me, struct machine* m ){
-	EMIT( MI_JR( _ra ) );
-	EMIT( MI_NOP( ) );
-}
-
-
 // TODO: take array of operands as argument
 static void call_cfn( struct emitter* me, struct machine* m, uintptr_t fn, size_t argsz ){
 #if 0
@@ -158,8 +141,8 @@ struct machine_ops mips_ops = {
 	.bgt = mips_bgt,
 	.ble = mips_ble,
 	.bge = mips_bge,
-	.call = call,
-	.ret = ret,
+	.call = mips_call,
+	.ret = mips_ret,
 	.call_cfn = call_cfn, 
 	.create_emitter = emitter32_create 
 };

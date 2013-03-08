@@ -84,7 +84,7 @@ static void precall( struct machine_ops* mop, struct emitter* e, struct frame* f
 	
 	// call function without spilling any temps
 	bool prior = disable_spill( f->m );
-	mop->call( e, f->m, clive.value );
+	mop->call( e, f->m, LBL_ABS( clive.value ) );
 	restore_spill( f->m, prior );
 
 	// release temps used in call

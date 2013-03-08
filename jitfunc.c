@@ -55,8 +55,12 @@ struct JFunc* jfuncs_get( int idx ){
 	return &jit_functions[ idx ];
 }
 
-void* jfunc_addr( int idx ){
-	return jfuncs_code  + jfuncs_get( idx )->addr * 4;	// TODO: emitter should do this in generic sense 
+void* do_jfunc_addr( struct emitter* e, int idx, int off ){
+	return e->ops->offset( e, jfuncs_get( idx )->addr + off, jfuncs_code );
+}
+
+void* jfunc_addr( struct emitter* e, int idx ){
+	return do_jfunc_addr( e, idx, 0 );	
 }
 
 int jfuncs_temp_clobber( struct machine* m, int idx ){
@@ -79,7 +83,8 @@ void jfunc_call( struct machine_ops* mop, struct emitter* e, struct machine* m, 
 	// TODO: check constraints 
 
 	// max_access check spill
-	mop->call( e, m, OP_TARGETIMMED( (uintptr_t)jfunc_addr( idx ) + 4 * off ) );	// TODO: emitter should do mul
+	mop->call( e, m, LBL_ABS( OP_TARGETIMMED( (uintptr_t)do_jfunc_addr( e, idx, off ) ) ) );	
+
 	// check spill
 
 	// TODO: proper error handling 

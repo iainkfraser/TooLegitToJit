@@ -74,9 +74,9 @@ static size_t link( struct emitter* e ){
 	return SELF->size;
 }
 
-static void* offset( struct emitter* e, int offset ){
+static void* offset( struct emitter* e, int offset, void* code ){
 	int jmp = offset * 4;
-	return (char*)SELF->mcode + jmp; 
+	return (char*)( code ? code : SELF->mcode ) + jmp; 
 }
 
 static void cleanup( struct emitter* e ){
@@ -135,6 +135,11 @@ static unsigned int ec( struct emitter* e ){
 	return SELF->size / 4;
 }
 
+
+static uintptr_t absc( struct emitter* e ){
+	return (uintptr_t)SELF->mcode[ SELF->size / 4 ]; 
+}
+
 static struct emitter_ops vtable = {
 	.link = &link,
 	.offset = &offset, 
@@ -143,7 +148,8 @@ static struct emitter_ops vtable = {
 	.label_local = &label_local,
 	.branch_pc = &branch_pc,
 	.branch_local = &branch_local, 
-	.ec = &ec
+	.ec = &ec,
+	.absc = absc
 };
 
 
@@ -195,7 +201,6 @@ static uint32_t find_local_label( struct emitter32* e, int pc, int local, bool i
 	assert( false );	// TODO: error handling 
 
 }
-
 
 /*
 * Emitter specilisations 

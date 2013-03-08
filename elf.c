@@ -108,11 +108,11 @@ static void dump_stringtable_jfuncs( FILE* f, int *stidx ){
 	}
 }
 
-static int dump_symboltable_jfuncs( FILE* f, int secidx ){
+static int dump_symboltable_jfuncs( FILE* f, int secidx, struct emitter* e ){
 	for( int i = 0; i < JF_COUNT; i++ ){
 		struct JFunc* j = jfuncs_get( i );
 
-		dump_symbol_localfunc( f, j->strtabidx, jfunc_addr( i ) - jfunc_addr( 0 ), secidx );
+		dump_symbol_localfunc( f, j->strtabidx, jfunc_addr( e, i ) - jfunc_addr( e, 0 ), secidx );
 	}
 
 	return JF_COUNT;
@@ -172,7 +172,7 @@ static void dump_sectionentry_protos( FILE* f, struct proto* p, int stridtext, i
 
 }
 
-void serialise( struct proto* main, char* filepath, void *jsection, size_t jsize, struct machine* m ){
+void serialise( struct proto* main, char* filepath, void *jsection, size_t jsize, struct machine* m, struct emitter* e ){
 	int stridst, stridtext, stridsyt, stidx = 0, stoff, stend, syoff, syend, jfuncoff, sechdroff, sysz;
 	FILE* o = fopen( filepath, "w" );
 
@@ -202,7 +202,7 @@ void serialise( struct proto* main, char* filepath, void *jsection, size_t jsize
 	sysz = 0;
 	syoff = ftell( o );
 	sysz += dump_symbol( o, 0, 0, 0, SHN_UNDEF );
-	sysz += dump_symboltable_jfuncs( o, sytabidx + 1 );	// jfuncs section is after NULL, strtab and symtab
+	sysz += dump_symboltable_jfuncs( o, sytabidx + 1, e );	// jfuncs section is after NULL, strtab and symtab
 	sysz += ( nr_lsections = dump_symboltable_protos( o, main, &luasecstart ) );
 	syend = ftell( o );
 

@@ -47,6 +47,13 @@
 		( 	12		)				\
 	)
 
+#define GEN_MIPS_OPCODE_ABS( op, ins_idx )				\
+	(								\
+		( ( op & 0x3f ) << 26 )					\
+			|						\
+		( ins_idx & 0x3ffffff )					\
+	)
+
 #define GEN_MIPS_OPCODE_3REG_TERT( primaryop, rs, rt, rd, secondaryop, tertop )	\
 	( GEN_MIPS_OPCODE_3REG( primaryop, rs, rt, rd, secondaryop ) | ( ( tertop & 0x3f ) << 6 ) )
 
@@ -123,6 +130,7 @@
 #define MI_BLTZ( rs, off )	GEN_MIPS_OPCODE_2REG( MOP_BLTZ, rs, 0, off )
 #define MI_BGEZ( rs, off )	GEN_MIPS_OPCODE_2REG( 1, rs, MOP_BGEZ, off ) 
 #define MI_BGTZ( rs, off )	GEN_MIPS_OPCODE_2REG( MOP_BGTZ, rs, 0, off )
+#define MI_JAL( addr )		GEN_MIPS_OPCODE_ABS( MOP_JAL, ( ( addr ) >> 2 ) ) 	// the ABS does the anding
 #define MI_JALR( rs )		GEN_MIPS_OPCODE_3REG( MOP_SPECIAL, rs, _zero, _ra, MOP_SPECIAL_JALR )
 #define MI_JR( rs )		GEN_MIPS_OPCODE_3REG( MOP_SPECIAL, rs, 0, 0, MOP_SPECIAL_JR )
 #define MI_LW( rt, base, off )	GEN_MIPS_OPCODE_2REG( MOP_LW, base, rt, (int16_t)(off) )

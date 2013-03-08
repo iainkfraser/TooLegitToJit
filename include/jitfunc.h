@@ -27,7 +27,7 @@ struct JFunc* jfuncs_get( int idx );
 
 #define JFUNC_UNLIMITED_STACK	9999	
 void jfunc_call( struct machine_ops* mop, struct emitter* e, struct machine* m, int idx, int off, int maxstack, int nargs, ... );
-void* jfunc_addr( int idx );
+void* jfunc_addr( struct emitter* e, int idx );
 
 // callback for creating JIT functions
 typedef void (*jf_init)( struct JFunc* jf, struct machine_ops* mop, struct emitter* e, struct machine* m );
