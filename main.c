@@ -349,15 +349,29 @@ int load_function( FILE* f, struct proto* p, struct code_alloc* ca, struct machi
 
 }
 
-static void execute( struct proto* main ){
+static void execute( struct proto* main, void* prologue ){
 	struct timeval tv;
 	int x[9];
 	uint32_t start,end;
-	int (*chunk)() = main->code_start;
-
+	int (*chunk)() = main->code_start; 
 	gettimeofday( &tv, NULL );
 	start = tv.tv_sec * 1000 + tv.tv_usec / 1000;
+
+#if defined(__mips__)
+	// TODO: make this more generic - probably have func in xlogue
+	register uint32_t ci asm("s1") = (uint32_t)&chunk;
+	uint32_t pro = (uint32_t)prologue;
+	asm("jalr %0" :: "r" (pro) );
+/*	asm("sw $ra, -4($sp)" );
+	asm("sw $s8, -8($sp)" );
+	asm("sw %0, -12($sp)" :: "r" ( c ) );
+	asm("addiu $sp, $sp, -12 " ::: "sp" );
+	asm("addiu $s8, $sp, 4 " );
+	asm("jr %0" :: "r" ( c ) );		*/
+#else
+#error	"launcher not implemented."
 	chunk();
+#endif
 
 	// temp method for getting result
 #if defined(__mips__)
@@ -448,7 +462,7 @@ int main( int argc, char* argv[] ){
 	do_cfail( load_function( f, &main, &ca, &mips_mach, &mips_ops ), "unable to load func" );
 
 	if( !disassem )
-		execute( &main );
+		execute( &main, jfunc_addr( e, JF_PROLOGUE ) );
 	else
 		serialise( &main, out, jitfuncs, sizemcode, &mips_mach, e );	
 

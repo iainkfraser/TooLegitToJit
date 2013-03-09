@@ -35,6 +35,9 @@ static void prefer_nontemp_acquire_reg( struct machine_ops* mop, struct emitter*
 		else
 			reg[i] = OP_TARGETREG( acquire_temp( mop, e, m ) );	// ( i - nr_nontemps );	
 	}
+
+	// disable spill
+	disable_spill( m );
 }
 
 static void prefer_nontemp_release_reg( struct machine_ops* mop, struct emitter* e, struct machine* m, int n ){
@@ -44,6 +47,8 @@ static void prefer_nontemp_release_reg( struct machine_ops* mop, struct emitter*
 	for( int i = nr_nontemps; i < n; i++ ){
 		release_temp( mop, e, m );
 	}
+
+	enable_spill( m );
 }
 
 
@@ -83,9 +88,13 @@ static void precall( struct machine_ops* mop, struct emitter* e, struct frame* f
 	mop->add( e, f->m, rargs[ RA_BASE ], OP_TARGETREG( cstack.value.base ), OP_TARGETIMMED( cstack.value.offset ) );
 	
 	// call function without spilling any temps
+#if 0
 	bool prior = disable_spill( f->m );
 	mop->call( e, f->m, LBL_ABS( clive.value ) );
 	restore_spill( f->m, prior );
+#else
+	jfunc_call( mop, e, f->m, JF_PROLOGUE, 0, JFUNC_UNLIMITED_STACK, 2, rargs[ RA_EXIST ], rargs[ RA_SRC ] );
+#endif
 
 	// release temps used in call
 	prefer_nontemp_release_reg( mop, e, f->m, RA_COUNT );
@@ -164,6 +173,29 @@ void do_ret( struct machine_ops* mop, struct emitter* e, struct frame* f, int vr
 }
 
 void prologue( struct machine_ops* mop, struct emitter* e, struct frame* f ){
+#if 1
+	const operand sp = OP_TARGETREG( f->m->sp );
+	const operand fp = OP_TARGETREG( f->m->fp );
+	const int nparams = f->nr_params;
+
+	operand rargs[ RA_SIZE ];
+	prefer_nontemp_acquire_reg( mop, e, f->m, RA_SIZE, rargs );
+	
+	mop->add( e, f->m, sp, sp, OP_TARGETIMMED( -( 8 * f->nr_locals ) ) );
+	if( nparams ){
+		// set nparams
+		mop->move( e, f->m, rargs[ RA_EXPECT ], OP_TARGETIMMED( nparams ) );
+		
+		// do argument cpy
+		jfunc_call( mop, e, f->m, JF_ARG_RES_CPY, 0, JFUNC_UNLIMITED_STACK, 4, rargs[ RA_SRC ], rargs[ RA_DST ], 
+							rargs[ RA_EXPECT ], rargs[ RA_EXIST ] );
+		
+		// do call
+		jfunc_call( mop, e, f->m, JF_LOAD_LOCALS, jf_loadlocal_offset( f->m, nparams ), JFUNC_UNLIMITED_STACK, 0 );
+	}
+	
+	prefer_nontemp_release_reg( mop, e, f->m, RA_SIZE );
+#else
 	// new frame assumes no temporaries have been used yet 
 	assert( temps_accessed( f->m ) == 0 );
 
@@ -205,6 +237,7 @@ void prologue( struct machine_ops* mop, struct emitter* e, struct frame* f ){
 		jfunc_call( mop, e, f->m, JF_LOAD_LOCALS, jf_loadlocal_offset( f->m, nparams ), maxstack, 0 );
 #endif
 	}
+#endif
 }
 
 void epilogue( struct machine_ops* mop, struct emitter* e, struct frame* f ){
@@ -331,5 +364,50 @@ void jinit_epi( struct JFunc* jf, struct machine_ops* mop, struct emitter* e, st
 		pop( mop, e, m, fp );
 
 	mop->ret( e, m );
+}
+
+/*
+* Do the majority ( function independent ) part of the prologue. That is: store the frame section,
+* update src and dst pointers and call the memcpy.
+*
+* The function specific code needs to set the number of params, update the stack ( requires # of locals )
+* and then unspill params.  
+*/
+void jinit_pro( struct JFunc* jf, struct machine_ops* mop, struct emitter* e, struct machine* m ){
+	// phoney frame 
+	struct frame F = { .m = m, .nr_locals = 1, .nr_params = 0 };
+	struct frame *f = &F;
+
+	const operand sp = OP_TARGETREG( f->m->sp );
+	const operand fp = OP_TARGETREG( f->m->fp );
+	const vreg_operand basestack = vreg_to_operand( f, 0, true );		// destination is first local
+	const int maxstack = JFUNC_UNLIMITED_STACK; 
+	
+	operand rargs[ RA_SIZE ];
+	prefer_nontemp_acquire_reg( mop, e, f->m, RA_SIZE, rargs );
+
+	// push old frame pointer, closure addr / result start addr, expected nr or results 
+	if( f->m->is_ra )
+		pushn( mop, e, f->m, 3, OP_TARGETREG( f->m->ra), fp, rargs[ RA_SRC ] ); 
+	else
+		pushn( mop, e, f->m, 2, fp, rargs[ RA_SRC ] ); 
+	
+	// set ebp and update stack
+	mop->add( e, f->m, fp, sp, OP_TARGETIMMED( 4 ) );	// point to ebp so add 4 
+
+	// set src ( always start after closure see Lua VM for reason )
+	mop->add( e, f->m, rargs[ RA_SRC ], rargs[ RA_SRC ], OP_TARGETIMMED( -8 ) );
+	mop->add( e, f->m, rargs[ RA_DST ], OP_TARGETREG( basestack.value.base ), OP_TARGETIMMED( basestack.value.offset ) );
+		
+
+	/*
+	* Call the actual function, which is the closure. On RISC this will clobber
+	* temp hopefully this isn't a live reg or we will get exception. On CISC
+	* there is probably indirect direct address jmp instruction ( x86 does 0 ). 
+	*/
+	mop->b( e, f->m, LBL_ABS( OP_TARGETDADDR( rargs[ RA_SRC ].reg, 8 ) ) );
+
+	prefer_nontemp_release_reg( mop, e, f->m, RA_SIZE );
+
 }
 
