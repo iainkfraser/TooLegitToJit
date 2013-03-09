@@ -30,13 +30,19 @@ extern struct machine_ops mips_ops;
 */
 
 static inline void call_prologue( struct emitter* me, struct machine* m ){
+#if 0 
 	EMIT( MI_SW( _ra, m->sp, -4 ) );		// DO NOT PUT in delay slot because ra already overwritten.
+#endif
 }
 
 static inline void call_epilogue( struct emitter* me, struct machine* m ){
+#if 0
 	EMIT( MI_ADDIU( m->sp, m->sp, -4 ) );	// delay slot
 	EMIT( MI_LW( _ra, m->sp, 0 ) );
 	EMIT( MI_ADDIU( m->sp, m->sp, 4 ) );
+#else
+	EMIT( MI_NOP() );
+#endif
 }
 
 void mips_call( struct emitter* me, struct machine* m, label l ){

@@ -147,10 +147,13 @@ struct machine_ops mips_ops = {
 	.create_emitter = emitter32_create 
 };
 
+#undef ra 
 
 struct machine mips_mach = {
 	.sp = _sp,
 	.fp = _fp,
+	.ra = _ra, 
+	.is_ra = true,
 	.nr_reg = 18 + 4,
 	.nr_temp_regs = 4,
 #ifdef _ELFDUMP_

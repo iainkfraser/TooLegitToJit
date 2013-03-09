@@ -16,7 +16,8 @@
 
 
 struct machine {
-	int 		sp,fp;		// stack pointer and frame pointer 
+	int 		sp,fp,ra;	// stack pointer, frame pointer and return address reg 
+	bool		is_ra;		// is return address register ( if not assume call includes push )
 	int 		nr_reg;
 	int 		nr_temp_regs;  	// first NR_TEMP_REGS registers are temps the rest are used for locals and consts
 	bool		allow_spill;	// allow acquire_register to spill temp onto the stack  

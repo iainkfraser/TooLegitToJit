@@ -175,7 +175,10 @@ void prologue( struct machine_ops* mop, struct emitter* e, struct frame* f ){
 	prefer_nontemp_acquire_reg( mop, e, f->m, RA_SIZE, rargs );
 
 	// push old frame pointer, closure addr / result start addr, expected nr or results 
-	pushn( mop, e, f->m, 2, fp, rargs[ RA_SRC ] ); 
+	if( f->m->is_ra )
+		pushn( mop, e, f->m, 3, OP_TARGETREG( f->m->ra), fp, rargs[ RA_SRC ] ); 
+	else
+		pushn( mop, e, f->m, 2, fp, rargs[ RA_SRC ] ); 
 	
 	// set ebp and update stack
 	mop->add( e, f->m, fp, sp, OP_TARGETIMMED( 4 ) );	// point to ebp so add 4 
@@ -322,7 +325,11 @@ void jinit_epi( struct JFunc* jf, struct machine_ops* mop, struct emitter* e, st
 
 	// reset stack 
 	mop->move( e, m, sp, fp );
-	pop( mop, e, m, fp );
+	if( m->is_ra ) 
+		popn( mop, e, m , 2, fp, OP_TARGETREG( m->ra ) );
+	else
+		pop( mop, e, m, fp );
+
 	mop->ret( e, m );
 }
 
