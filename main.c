@@ -369,7 +369,8 @@ static void execute( struct proto* main, void* prologue ){
 	asm("addiu $s8, $sp, 4 " );
 	asm("jr %0" :: "r" ( c ) );		*/
 #else
-#error	"launcher not implemented."
+//#error	"launcher not implemented."
+	abort();
 	chunk();
 #endif
 
@@ -396,7 +397,7 @@ static void execute( struct proto* main, void* prologue ){
 		printf("local[%d] = %d\n", i, x[i] );
 	}
 
-	printf("2 Legit 2 JIT %d took %u ms\n", x, end - start );
+	printf("2 Legit 2 JIT %p took %u ms\n", x, end - start );
 }
 
 static void cleanup( struct proto* p, struct code_alloc* ca ){

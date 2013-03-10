@@ -12,6 +12,6 @@ struct closure {
 };
 
 struct closure* closure_create( struct proto* addr, struct closure* c ){
-	printf("create closure %x\n", (uintptr_t)addr->code );
+	printf("create closure %p\n", addr->code );
 }
 

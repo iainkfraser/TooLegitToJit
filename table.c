@@ -23,7 +23,7 @@ table_t* table_create( int array, int hash ){
 	if( !t )
 		THROW( ENOMEM );
 	t->ref = 0;
-	printf("create table %x\n", t );
+	printf("create table %p\n", t );
 
 	return t;
 }
