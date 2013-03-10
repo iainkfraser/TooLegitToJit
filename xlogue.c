@@ -1,7 +1,10 @@
 /*
 * (C) Iain Fraser - GPLv3 
 *
-* Lua function prologue and epilogue code generation. 
+* Lua function prologue and epilogue code generation. The code is a bit
+* of a mess because I moved the naive inline version to the function
+* calling version and didnt delete the original but instead commneted it
+* out using the preprocessor.  
 */
 
 #include <stdbool.h>
