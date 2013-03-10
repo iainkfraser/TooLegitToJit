@@ -16,16 +16,16 @@ OBJS := $(patsubst %,$(OBJDIR)/%,$(OBJECTS))
 $(OBJDIR)/eluajit : $(OBJS) 
 	 $(CC) $(CFLAGS) $(OBJS) -o $(OBJDIR)/eluajit
 
-$(OBJDIR)/%.o : %.c $(basename $(OBJDIR)/%.o)/.stamp
+$(OBJS) : $(OBJDIR)/%.o : %.c $(patsubst %,%.stamp, $(dir $(OBJS)))
 	$(CC) -c $(CFLAGS) $*.c -o $(OBJDIR)/$*.o
 
 %.stamp:
-	-mkdir -p $(basename $@)
+	mkdir -p $(dir $@)
 	touch $@
 
 .PHONY: clean
 clean : 
-	rm bin/*
+	rm -f $(OBJS) $(OBJDIR)/eluajit $(OBJS:%.o=%.d)
 
 # include the depedency file. Note the "-" that means ignore it if file doesn't exist
 # because if .d doesn't exist then .o doesn't exist so its gonna get rebuilt anyway.
