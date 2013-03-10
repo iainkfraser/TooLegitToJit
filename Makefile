@@ -16,9 +16,14 @@ OBJS := $(patsubst %,$(OBJDIR)/%,$(OBJECTS))
 $(OBJDIR)/eluajit : $(OBJS) 
 	 $(CC) $(CFLAGS) $(OBJS) -o $(OBJDIR)/eluajit
 
-$(OBJDIR)/%.o : %.c
+$(OBJDIR)/%.o : %.c $(basename $(OBJDIR)/%.o)/.stamp
 	$(CC) -c $(CFLAGS) $*.c -o $(OBJDIR)/$*.o
 
+%.stamp:
+	-mkdir -p $(basename $@)
+	touch $@
+
+.PHONY: clean
 clean : 
 	rm bin/*
 
