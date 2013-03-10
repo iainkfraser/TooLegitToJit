@@ -108,12 +108,18 @@ static void postcall( struct machine_ops* mop, struct emitter* e, struct frame* 
 
 	// max stack clobber 
 	const int maxstack = 3;	// prior frame has buffer of pushed return addr, frame pointer and closure
+#define USE_JFUNC_FOR_VARRES
 
 	// set dst and expect
+#if 0 
 	mop->add( e, f->m, rargs[ RA_DST ], OP_TARGETREG( basestack.value.base ), OP_TARGETIMMED( basestack.value.offset ) );
+#endif
 
 	if( nret == 0 ){
-		// set exist 	
+#ifdef USE_JFUNC_FOR_VARRES 
+		jfunc_call( mop, e, f->m, JF_VARRES_POSTCALL, 0, maxstack, 4, rargs[ RA_SRC ], rargs[ RA_DST ], 
+						rargs[ RA_EXPECT ], rargs[ RA_EXIST ] );
+#else
 		mop->move( e, f->m, rargs[ RA_EXPECT ], rargs[ RA_EXIST ] );
 		
 		// update stack position 
@@ -122,13 +128,20 @@ static void postcall( struct machine_ops* mop, struct emitter* e, struct frame* 
 		mop->sub( e, f->m, OP_TARGETREG( f->m->sp ), OP_TARGETREG( f->m->fp ), rargs[ RA_NR_ARGS ] );
 
 		mop->move( e, f->m, rargs[ RA_EXIST ], rargs[ RA_EXPECT ]  );	
+#endif
 	} else {
 		mop->move( e, f->m, rargs[ RA_EXPECT ], OP_TARGETIMMED( nret - 1 ) );
+#ifdef USE_JFUNC_FOR_VARRES 
+		jfunc_call( mop, e, f->m, JF_ARG_RES_CPY, 0, maxstack, 4, rargs[ RA_SRC ], rargs[ RA_DST ], 
+						rargs[ RA_EXPECT ], rargs[ RA_EXIST ] );
+#endif
 	}
 
-
-	jfunc_call( mop, e, f->m, JF_ARG_RES_CPY, 0, maxstack, 4, rargs[ RA_SRC ], rargs[ RA_DST ], 
+#ifndef USE_JFUNC_FOR_VARRES
+		jfunc_call( mop, e, f->m, JF_ARG_RES_CPY, 0, maxstack, 4, rargs[ RA_SRC ], rargs[ RA_DST ], 
 						rargs[ RA_EXPECT ], rargs[ RA_EXIST ] );
+#endif
+
 	prefer_nontemp_release_reg( mop, e, f->m, RA_SIZE );
 }
 
@@ -162,13 +175,15 @@ void do_ret( struct machine_ops* mop, struct emitter* e, struct frame* f, int vr
 	operand rargs[ RA_COUNT ];
 	prefer_nontemp_acquire_reg( mop, e, f->m, RA_COUNT, rargs );
 
+	mop->add( e, f->m, rargs[ RA_BASE ], OP_TARGETREG( basestack.value.base ), OP_TARGETIMMED( basestack.value.offset ) );
+
 	if( nret > 0 ) {
 		mop->move( e, f->m, rargs[ RA_NR_ARGS ], OP_TARGETIMMED( nret - 1 ) );
 	} else {
-		; 	// TODO: calculate total results 
+		mop->sub( e, f->m, rargs[ RA_NR_ARGS ], rargs[ RA_BASE ], OP_TARGETREG( f->m->sp ) );	
+		mop->udiv( e, f->m, rargs[ RA_NR_ARGS ], rargs[ RA_NR_ARGS ], OP_TARGETIMMED( 8 ) );
 	}
 
-	mop->add( e, f->m, rargs[ RA_BASE ], OP_TARGETREG( basestack.value.base ), OP_TARGETIMMED( basestack.value.offset ) );
 	mop->b( e, f->m, LBL_ABS( OP_TARGETIMMED( (uintptr_t)jfunc_addr( e, JF_EPILOGUE ) ) ) ); 
 }
 
@@ -353,17 +368,28 @@ void jinit_cpy_arg_res( struct JFunc* jf, struct machine_ops* mop, struct emitte
 
 
 void jinit_epi( struct JFunc* jf, struct machine_ops* mop, struct emitter* e, struct machine* m ){
+	// phoney frame 
+	struct frame F = { .m = m, .nr_locals = 1, .nr_params = 0 };
+	struct frame *f = &F;
+
 	const operand sp = OP_TARGETREG( m->sp );
 	const operand fp = OP_TARGETREG( m->fp );
 
+	operand rargs[ RA_SIZE ];
+	prefer_nontemp_acquire_reg( mop, e, f->m, RA_SIZE, rargs );
+
 	// reset stack 
-	mop->move( e, m, sp, fp );
+//	mop->move( e, m, sp, fp );
+	mop->add( e, m, sp, fp, OP_TARGETIMMED( -4 ) );
 	if( m->is_ra ) 
-		popn( mop, e, m , 2, fp, OP_TARGETREG( m->ra ) );
+		popn( mop, e, m , 3, rargs[ RA_DST ], fp, OP_TARGETREG( m->ra ) );
 	else
-		pop( mop, e, m, fp );
+		popn( mop, e, m, 2, rargs[ RA_DST ], fp ); 
+//		pop( mop, e, m, fp );
 
 	mop->ret( e, m );
+	
+	prefer_nontemp_release_reg( mop, e, f->m, RA_SIZE );
 }
 
 /*
@@ -411,3 +437,46 @@ void jinit_pro( struct JFunc* jf, struct machine_ops* mop, struct emitter* e, st
 
 }
 
+/*
+* The number of results is not know before hand. Need to update stack for future
+* calls.
+*/
+void jinit_vresult_postcall( struct JFunc* jf, struct machine_ops* mop, struct emitter* e, struct machine* m ){
+	// phoney frame 
+	struct frame F = { .m = m, .nr_locals = 1, .nr_params = 0 };
+	struct frame *f = &F;
+
+	operand rargs[ RA_SIZE ];
+	prefer_nontemp_acquire_reg( mop, e, f->m, RA_SIZE, rargs );
+
+	// max stack clobber 
+	const int maxstack = 3;	// prior frame has buffer of pushed return addr, frame pointer and closure
+
+	// consume as many results as available 
+	mop->move( e, f->m, rargs[ RA_EXPECT ], rargs[ RA_EXIST ] );
+	
+	// if register based remember return address 
+	if( f->m->is_ra )
+		pushn( mop, e, f->m, 1, OP_TARGETREG( f->m->ra) );	// not safe cause of stack
+
+	// copy args across 
+	jfunc_call( mop, e, f->m, JF_ARG_RES_CPY, 0, maxstack, 4, rargs[ RA_SRC ], rargs[ RA_DST ], 
+						rargs[ RA_EXPECT ], rargs[ RA_EXIST ] );
+
+	if( f->m->is_ra )
+		popn( mop, e, f->m, 1, OP_TARGETREG( f->m->ra) );
+
+	
+	/*
+	* this depends heavily on copy arg implementation, it assumes ptrs will point to 
+	* the top of the stack after copying i.e. the last result copied.
+	*/
+	mop->add( e, m, OP_TARGETREG( f->m->sp ), rargs[ RA_DST ], OP_TARGETIMMED( 0 ) ); 
+
+	prefer_nontemp_release_reg( mop, e, f->m, RA_SIZE );
+
+	// return 
+	mop->ret( e, m );
+
+	
+}

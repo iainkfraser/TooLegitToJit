@@ -78,7 +78,7 @@ bool release_temp( struct machine_ops* mop, struct emitter* e, struct machine* m
 
 	m->reg[i] = SET_REFCOUNT( m->reg[i], rc );
 
-	return rc >= 0;	
+	return rc > 0;	
 }
 
 

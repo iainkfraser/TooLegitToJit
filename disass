@@ -1,0 +1,227 @@
+
+dsa.o:     file format elf32-tradlittlemips
+
+
+Disassembly of section .text:
+
+2aacc000 <J0>:
+2aacc000:	02138023 	subu	s0,s0,s3
+2aacc004:	06000004 	bltz	s0,2aacc018 <J0+0x18>
+2aacc008:	02138021 	addu	s0,s0,s3
+2aacc00c:	02608025 	move	s0,s3
+2aacc010:	10000002 	b	2aacc01c <J0+0x1c>
+2aacc014:	00000000 	nop
+2aacc018:	02008025 	move	s0,s0
+2aacc01c:	34040000 	li	a0,0x0
+2aacc020:	1090000a 	beq	a0,s0,2aacc04c <J0+0x4c>
+2aacc024:	00000000 	nop
+2aacc028:	8e250000 	lw	a1,0(s1)
+2aacc02c:	ae450000 	sw	a1,0(s2)
+2aacc030:	8e25fffc 	lw	a1,-4(s1)
+2aacc034:	ae45fffc 	sw	a1,-4(s2)
+2aacc038:	2652fff8 	addiu	s2,s2,-8
+2aacc03c:	2631fff8 	addiu	s1,s1,-8
+2aacc040:	24840001 	addiu	a0,a0,1
+2aacc044:	1000fff6 	b	2aacc020 <J0+0x20>
+2aacc048:	00000000 	nop
+2aacc04c:	02002025 	move	a0,s0
+2aacc050:	10900007 	beq	a0,s0,2aacc070 <J0+0x70>
+2aacc054:	00000000 	nop
+2aacc058:	34050000 	li	a1,0x0
+2aacc05c:	ae45fffc 	sw	a1,-4(s2)
+2aacc060:	2652fff8 	addiu	s2,s2,-8
+2aacc064:	24840001 	addiu	a0,a0,1
+2aacc068:	1000fff9 	b	2aacc050 <J0+0x50>
+2aacc06c:	00000000 	nop
+2aacc070:	03e00008 	jr	ra
+2aacc074:	00000000 	nop
+
+2aacc078 <J1>:
+2aacc078:	afd8ffb8 	sw	t8,-72(s8)
+2aacc07c:	afd9ffb4 	sw	t9,-76(s8)
+2aacc080:	afceffc0 	sw	t6,-64(s8)
+2aacc084:	afcfffbc 	sw	t7,-68(s8)
+2aacc088:	afccffc8 	sw	t4,-56(s8)
+2aacc08c:	afceffc4 	sw	t6,-60(s8)
+2aacc090:	afcaffd0 	sw	t2,-48(s8)
+2aacc094:	afcbffcc 	sw	t3,-52(s8)
+2aacc098:	afc8ffd8 	sw	t0,-40(s8)
+2aacc09c:	afc9ffd4 	sw	t1,-44(s8)
+2aacc0a0:	afd6ffe0 	sw	s6,-32(s8)
+2aacc0a4:	afd7ffdc 	sw	s7,-36(s8)
+2aacc0a8:	afd4ffe8 	sw	s4,-24(s8)
+2aacc0ac:	afd5ffe4 	sw	s5,-28(s8)
+2aacc0b0:	afd2fff0 	sw	s2,-16(s8)
+2aacc0b4:	afd3ffec 	sw	s3,-20(s8)
+2aacc0b8:	afd0fff8 	sw	s0,-8(s8)
+2aacc0bc:	afd1fff4 	sw	s1,-12(s8)
+2aacc0c0:	03e00008 	jr	ra
+2aacc0c4:	00000000 	nop
+
+2aacc0c8 <J2>:
+2aacc0c8:	8fd8ffb8 	lw	t8,-72(s8)
+2aacc0cc:	8fd9ffb4 	lw	t9,-76(s8)
+2aacc0d0:	8fceffc0 	lw	t6,-64(s8)
+2aacc0d4:	8fcfffbc 	lw	t7,-68(s8)
+2aacc0d8:	8fccffc8 	lw	t4,-56(s8)
+2aacc0dc:	8fceffc4 	lw	t6,-60(s8)
+2aacc0e0:	8fcaffd0 	lw	t2,-48(s8)
+2aacc0e4:	8fcbffcc 	lw	t3,-52(s8)
+2aacc0e8:	8fc8ffd8 	lw	t0,-40(s8)
+2aacc0ec:	8fc9ffd4 	lw	t1,-44(s8)
+2aacc0f0:	8fd6ffe0 	lw	s6,-32(s8)
+2aacc0f4:	8fd7ffdc 	lw	s7,-36(s8)
+2aacc0f8:	8fd4ffe8 	lw	s4,-24(s8)
+2aacc0fc:	8fd5ffe4 	lw	s5,-28(s8)
+2aacc100:	8fd2fff0 	lw	s2,-16(s8)
+2aacc104:	8fd3ffec 	lw	s3,-20(s8)
+2aacc108:	8fd0fff8 	lw	s0,-8(s8)
+2aacc10c:	8fd1fff4 	lw	s1,-12(s8)
+2aacc110:	03e00008 	jr	ra
+2aacc114:	00000000 	nop
+
+2aacc118 <J3>:
+2aacc118:	27ddfffc 	addiu	sp,s8,-4
+2aacc11c:	8fb20000 	lw	s2,0(sp)
+2aacc120:	8fbe0004 	lw	s8,4(sp)
+2aacc124:	8fbf0008 	lw	ra,8(sp)
+2aacc128:	27bd000c 	addiu	sp,sp,12
+2aacc12c:	03e00008 	jr	ra
+2aacc130:	00000000 	nop
+
+2aacc134 <J4>:
+2aacc134:	afbffffc 	sw	ra,-4(sp)
+2aacc138:	afbefff8 	sw	s8,-8(sp)
+2aacc13c:	afb1fff4 	sw	s1,-12(sp)
+2aacc140:	27bdfff4 	addiu	sp,sp,-12
+2aacc144:	27be0004 	addiu	s8,sp,4
+2aacc148:	2631fff8 	addiu	s1,s1,-8
+2aacc14c:	27d2fff8 	addiu	s2,s8,-8
+2aacc150:	8e240008 	lw	a0,8(s1)
+2aacc154:	00800008 	jr	a0
+2aacc158:	00000000 	nop
+
+2aacc15c <J5>:
+2aacc15c:	02009825 	move	s3,s0
+2aacc160:	afbffffc 	sw	ra,-4(sp)
+2aacc164:	27bdfffc 	addiu	sp,sp,-4
+2aacc168:	0eab3000 	jal	2aacc000 <J0>
+2aacc16c:	00000000 	nop
+2aacc170:	8fbf0000 	lw	ra,0(sp)
+2aacc174:	27bd0004 	addiu	sp,sp,4
+2aacc178:	265d0000 	addiu	sp,s2,0
+2aacc17c:	03e00008 	jr	ra
+2aacc180:	00000000 	nop
+
+Disassembly of section .text:
+
+2aacd000 <L0.0.0>:
+2aacd000:	27bdfff0 	addiu	sp,sp,-16
+2aacd004:	34100007 	li	s0,0x7
+2aacd008:	34110003 	li	s1,0x3
+2aacd00c:	afd0fff8 	sw	s0,-8(s8)
+2aacd010:	afd1fff4 	sw	s1,-12(s8)
+2aacd014:	34100001 	li	s0,0x1
+2aacd018:	27d1fff8 	addiu	s1,s8,-8
+2aacd01c:	0aab3046 	j	2aacc118 <J3>
+2aacd020:	00000000 	nop
+2aacd024:	34100000 	li	s0,0x0
+2aacd028:	27d1fff8 	addiu	s1,s8,-8
+2aacd02c:	0aab3046 	j	2aacc118 <J3>
+2aacd030:	00000000 	nop
+
+Disassembly of section .text:
+
+2aace000 <L0.0>:
+2aace000:	27bdffe0 	addiu	sp,sp,-32
+2aace004:	34130001 	li	s3,0x1
+2aace008:	0eab3000 	jal	2aacc000 <J0>
+2aace00c:	00000000 	nop
+2aace010:	0eab3042 	jal	2aacc108 <J2+0x40>
+2aace014:	00000000 	nop
+2aace018:	3c122aac 	lui	s2,0x2aac
+2aace01c:	3652d000 	ori	s2,s2,0xd000
+2aace020:	0200a025 	move	s4,s0
+2aace024:	0220a825 	move	s5,s1
+2aace028:	0240b025 	move	s6,s2
+2aace02c:	0260b825 	move	s7,s3
+2aace030:	0eab3028 	jal	2aacc0a0 <J1+0x28>
+2aace034:	00000000 	nop
+2aace038:	34100000 	li	s0,0x0
+2aace03c:	27d1ffe0 	addiu	s1,s8,-32
+2aace040:	0eab304d 	jal	2aacc134 <J4>
+2aace044:	00000000 	nop
+2aace048:	0eab3057 	jal	2aacc15c <J5>
+2aace04c:	00000000 	nop
+2aace050:	0eab303c 	jal	2aacc0f0 <J2+0x28>
+2aace054:	00000000 	nop
+2aace058:	27d1ffe8 	addiu	s1,s8,-24
+2aace05c:	0aab3046 	j	2aacc118 <J3>
+2aace060:	00000000 	nop
+2aace064:	34100000 	li	s0,0x0
+2aace068:	27d1fff8 	addiu	s1,s8,-8
+2aace06c:	0aab3046 	j	2aacc118 <J3>
+2aace070:	00000000 	nop
+
+Disassembly of section .text:
+
+2aacf000 <L0.1>:
+2aacf000:	27bdffe8 	addiu	sp,sp,-24
+2aacf004:	34130002 	li	s3,0x2
+2aacf008:	0eab3000 	jal	2aacc000 <J0>
+2aacf00c:	00000000 	nop
+2aacf010:	0eab3040 	jal	2aacc100 <J2+0x38>
+2aacf014:	00000000 	nop
+2aacf018:	0212a021 	addu	s4,s0,s2
+2aacf01c:	afd4ffe8 	sw	s4,-24(s8)
+2aacf020:	afd5ffe4 	sw	s5,-28(s8)
+2aacf024:	34100001 	li	s0,0x1
+2aacf028:	27d1ffe8 	addiu	s1,s8,-24
+2aacf02c:	0aab3046 	j	2aacc118 <J3>
+2aacf030:	00000000 	nop
+2aacf034:	34100000 	li	s0,0x0
+2aacf038:	27d1fff8 	addiu	s1,s8,-8
+2aacf03c:	0aab3046 	j	2aacc118 <J3>
+2aacf040:	00000000 	nop
+
+Disassembly of section .text:
+
+2aad2000 <L0>:
+2aad2000:	27bdffd8 	addiu	sp,sp,-40
+2aad2004:	3c102aac 	lui	s0,0x2aac
+2aad2008:	3610e000 	ori	s0,s0,0xe000
+2aad200c:	3c122aac 	lui	s2,0x2aac
+2aad2010:	3652f000 	ori	s2,s2,0xf000
+2aad2014:	0240a025 	move	s4,s2
+2aad2018:	0260a825 	move	s5,s3
+2aad201c:	0200b025 	move	s6,s0
+2aad2020:	0220b825 	move	s7,s1
+2aad2024:	34080004 	li	t0,0x4
+2aad2028:	34090003 	li	t1,0x3
+2aad202c:	0eab3026 	jal	2aacc098 <J1+0x20>
+2aad2030:	00000000 	nop
+2aad2034:	34100001 	li	s0,0x1
+2aad2038:	27d1ffe0 	addiu	s1,s8,-32
+2aad203c:	0eab304d 	jal	2aacc134 <J4>
+2aad2040:	00000000 	nop
+2aad2044:	0eab3057 	jal	2aacc15c <J5>
+2aad2048:	00000000 	nop
+2aad204c:	0eab303a 	jal	2aacc0e8 <J2+0x20>
+2aad2050:	00000000 	nop
+2aad2054:	0eab3026 	jal	2aacc098 <J1+0x20>
+2aad2058:	00000000 	nop
+2aad205c:	27d0ffe0 	addiu	s0,s8,-32
+2aad2060:	021d8023 	subu	s0,s0,sp
+2aad2064:	001080c2 	srl	s0,s0,0x3
+2aad2068:	27d1ffe8 	addiu	s1,s8,-24
+2aad206c:	0eab304d 	jal	2aacc134 <J4>
+2aad2070:	00000000 	nop
+2aad2074:	34130001 	li	s3,0x1
+2aad2078:	0eab3000 	jal	2aacc000 <J0>
+2aad207c:	00000000 	nop
+2aad2080:	0eab303a 	jal	2aacc0e8 <J2+0x20>
+2aad2084:	00000000 	nop
+2aad2088:	34100000 	li	s0,0x0
+2aad208c:	27d1fff8 	addiu	s1,s8,-8
+2aad2090:	0aab3046 	j	2aacc118 <J3>
+2aad2094:	00000000 	nop

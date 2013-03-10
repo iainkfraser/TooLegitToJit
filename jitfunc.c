@@ -13,6 +13,7 @@ extern void jinit_store_regs( struct JFunc* jf, struct machine_ops* mop, struct 
 extern void jinit_load_regs( struct JFunc* jf, struct machine_ops* mop, struct emitter* e, struct machine* m );
 extern void jinit_epi( struct JFunc* jf, struct machine_ops* mop, struct emitter* e, struct machine* m );
 extern void jinit_pro( struct JFunc* jf, struct machine_ops* mop, struct emitter* e, struct machine* m );
+extern void jinit_vresult_postcall( struct JFunc* jf, struct machine_ops* mop, struct emitter* e, struct machine* m );
 
 static struct JFunc jit_functions[ JF_COUNT ];
 static char* jfuncs_code;
@@ -21,7 +22,8 @@ static jf_init jinittable[ JF_COUNT ] = {
 	,[ JF_STORE_LOCALS ] = &jinit_store_regs
 	,[ JF_LOAD_LOCALS ] = &jinit_load_regs
 	,[ JF_EPILOGUE ] = &jinit_epi
-	,[ JF_PROLOGUE ] = &jinit_pro 
+	,[ JF_PROLOGUE ] = &jinit_pro
+	,[ JF_VARRES_POSTCALL ] = &jinit_vresult_postcall 
 }; 
 
 
