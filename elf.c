@@ -168,7 +168,7 @@ static void dump_sectionentry_protos( FILE* f, struct proto* p, int stridtext, i
 	}
 
 	dump_section( f, stridtext, SHT_PROGBITS, SHF_ALLOC | SHF_EXECINSTR, 
-			(int)p->code, p->secoff, p->secend - p->secoff, sytabidx, 0, 0 );
+			(intptr_t)p->code, p->secoff, p->secend - p->secoff, sytabidx, 0, 0 );
 
 }
 
@@ -211,7 +211,7 @@ void serialise( struct proto* main, char* filepath, void *jsection, size_t jsize
 	dump_section( o, 0, SHT_NULL, 0, 0, 0, 0, SHN_UNDEF, 0, 0 );				// null section
 	dump_section( o, stridst, SHT_STRTAB, 0, 0, stoff, stend - stoff, SHN_UNDEF, 0, 0 );	// string table
 	dump_section( o, stridsyt, SHT_SYMTAB, 0, 0, syoff, syend - syoff, strtabidx, sysz, sizeof( Elf32_Sym ) );
-	dump_section( o, stridtext, SHT_PROGBITS, SHF_ALLOC | SHF_EXECINSTR, (int)jsection, jfuncoff, jsize, sytabidx, 0, 0 );
+	dump_section( o, stridtext, SHT_PROGBITS, SHF_ALLOC | SHF_EXECINSTR, (intptr_t)jsection, jfuncoff, jsize, sytabidx, 0, 0 );
 	dump_sectionentry_protos( o, main, stridtext, sytabidx );
 	
 	// goto start and dump header
