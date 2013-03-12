@@ -13,12 +13,14 @@
 #include "emitter32.h"
 #include "bit_manip.h"
 #include "frame.h"
+#include "jitfunc.h"
 #include "arch/mips/machine.h"
 #include "arch/mips/regdef.h"
 #include "arch/mips/opcodes.h"
 #include "arch/mips/arithmetic.h"
 #include "arch/mips/call.h"
 #include "arch/mips/branch.h"
+#include "arch/mips/jfunc.h"
 
 // use the sp variable in machine struct 
 #undef sp
@@ -98,31 +100,6 @@ void mips_ret( struct emitter* me, struct machine* m ){
 /*
 * Calling C functions ( static and dynamic ).
 */
-
-static bool require_spill( operand o ){
-	return ISO_REG( o ) && MIPSREG_ISTEMP( o.reg );
-}
-
-static void do_spill( struct emitter* me, struct frame* f, operand a, operand b, bool doswap ){
-	if( doswap )
-		swap( a, b );
-
-	_MOP->move( me, f->m, a, b );
-}
-
-static void tempreg_spill( struct emitter* me, struct frame* f, bool isstore ){
-
-	for( int i = 0; i < f->nr_locals; i++ ){
-		vreg_operand on = vreg_to_operand( f, i, false );
-		vreg_operand off = vreg_to_operand( f, i, true );
-
-		if( require_spill( on.value ) )
-			do_spill( me, f, off.value, on.value, !isstore );
-
-		if( require_spill( on.type ) )
-			do_spill( me, f, off.type, on.type, !isstore );
-	}
-}
 
 static int zerorow( const int n, int r, uint8_t dgraph[n][n] ){
 	for( int j = 0; j < n; j++ ){
@@ -217,8 +194,7 @@ void mips_static_ccall( struct emitter* me, struct frame* f, uintptr_t fn, const
 	} 
 
 	// spill MIPS temps
-	tempreg_spill( me, f, true );
-
+	jfunc_call( _MOP, me, f->m, jf_arch_idx( MJF_STORETEMP ), mjf_storetemp_offset( f->m, f->nr_locals ), JFUNC_UNLIMITED_STACK, 0 );
 
 	const operand sp = OP_TARGETREG( f->m->sp );
 	const operand ds = OP_TARGETIMMED( 4 * min( 4, argsz ) );
@@ -231,7 +207,7 @@ void mips_static_ccall( struct emitter* me, struct frame* f, uintptr_t fn, const
 
 
 	// fill MIPS temps
-	tempreg_spill( me, f, false );
+	jfunc_call( _MOP, me, f->m, jf_arch_idx( MJF_LOADTEMP ), mjf_loadtemp_offset( f->m, f->nr_locals ), JFUNC_UNLIMITED_STACK, 0 );
 
 	if( r )
 		_MOP->move( me, f->m, *r, OP_TARGETREG( _v0 ) );

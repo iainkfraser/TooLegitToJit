@@ -29,8 +29,11 @@ int mips_nr_jfuncs(){
 
 void mips_jf_init( struct JFunc* jf, struct emitter* me, struct machine* m, int idx ){
 	switch( idx ){
-		case MJF_SAVENCALL:
-			mips_jf_savencall( jf, me, m );
+		case MJF_STORETEMP:
+			mips_jf_storetemp( jf, me, m );
+			break;
+		case MJF_LOADTEMP:
+			mips_jf_loadtemp( jf, me, m );
 			break;
 		default:
 			assert( false );
@@ -52,26 +55,50 @@ static void do_spill( struct emitter* me, struct frame* f, operand a, operand b,
 	_MOP->move( me, f->m, a, b );
 }
 
-static void do_spill_or_fill( struct emitter* me, struct machine *m, bool isspill ){
+static void do_spill_or_fill( struct JFunc* jf, struct emitter* me, struct machine *m, bool isspill ){
+	int start,end, spill = 0;
 	vreg_operand on,off;
 
 	// phoney frame 
 	struct frame F = { .m = m, .nr_locals = max_live_locals( m ), .nr_params = 0 };
 	struct frame* f = &F;	
+
+	start =  me->ops->ec( me );
 	
 	for( int i = f->nr_locals; i >= 0; i-- ){
 		on = vreg_to_operand( f, i, false );
 		off = vreg_to_operand( f, i, true );
 
 		if( is_mips_temp( on.value ) )
-			do_spill( me, f, off.value, on.value, !isspill );
+			do_spill( me, f, off.value, on.value, !isspill ), spill++;
 
 		if( is_mips_temp( on.type ) )
-			do_spill( me, f, off.type, on.type, !isspill );
+			do_spill( me, f, off.type, on.type, !isspill ), spill++;
 	}
+
+	end = me->ops->ec( me ); 
+
+	
+	_MOP->ret( me, m );
+
+	assert( ( end - start ) % spill == 0 );
+	jf->data = ( end - start ) / spill;	
 }
 
-void mips_jf_savencall( struct JFunc* jf, struct emitter* me, struct machine* m ){
-	do_spill_or_fill( me, m, true );
-	// TODO: do function call on v0
+void mips_jf_storetemp( struct JFunc* jf, struct emitter* me, struct machine* m ){
+	do_spill_or_fill( jf, me, m, true );
+}
+
+void mips_jf_loadtemp( struct JFunc* jf, struct emitter* me, struct machine* m ){
+	do_spill_or_fill( jf, me, m, false );
+}
+
+int mjf_loadtemp_offset( struct machine* m, int nr_locals ){
+	struct JFunc* j = jfuncs_get( jf_arch_idx( MJF_LOADTEMP ) );
+	return max( 0, ( m->nr_reg - m->nr_temp_regs ) - 2 * nr_locals ) * j->data; 
+}
+
+int mjf_storetemp_offset( struct machine* m, int nr_locals ){
+	struct JFunc* j = jfuncs_get( jf_arch_idx( MJF_STORETEMP ) );
+	return max( 0, ( m->nr_reg - m->nr_temp_regs ) - 2 * nr_locals ) * j->data; 
 }
