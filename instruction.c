@@ -120,22 +120,30 @@ void emit_forloop( struct emitter** mce, struct machine_ops* mop, struct frame* 
 
 
 void emit_newtable( struct emitter** mce, struct machine_ops* mop, struct frame* f, loperand dst, int array, int hash ){
-	loadim( mop, REF, f->m, _a0, array );
-	loadim( mop, REF, f->m, _a1, hash );
-	mop->call_cfn( REF, f->m, (uintptr_t)&table_create, 0 );
-
-	operand src = OP_TARGETREG( _v0 ); 
-	mop->move( REF, f->m, loperand_to_operand( f, dst ).value,  src );
+	operand res = loperand_to_operand( f, dst ).value;
+	mop->call_static_cfn( REF, f, (uintptr_t)&table_create, &res, 2, OP_TARGETIMMED( array ), OP_TARGETIMMED( hash ) );
 }
 
 void emit_setlist( struct emitter** mce, struct machine_ops* mop, struct frame* f, loperand table, int n, int block ){
 	assert( table.islocal );
-
-	operand dst = OP_TARGETREG( _a0 );
-	operand val = OP_TARGETREG( _a3 );
+	assert( block != 0 );		// TODO: read the next instruction for int size
+	assert( n != 0 );		// TODO: sub top of stack to get # of args
 
 	const int offset = ( block - 1 ) * LFIELDS_PER_FLUSH; 
-	
+	vreg_operand t = loperand_to_operand( f, table );
+	vreg_operand v = vreg_to_operand( f, offset, true );
+	assert( ISO_DADDR( v.value ) );
+
+	// spill registers value
+	// TODO: verify its table
+
+	// get base adress
+	operand base = OP_TARGETREG( acquire_temp( mop, REF, f->m ) );
+	mop->add( REF, f->m, base, OP_TARGETREG( v.value.base ), OP_TARGETIMMED( v.value.offset ) );
+	mop->call_static_cfn( REF, f, (uintptr_t)&table_set, NULL, 3, t.value, base, OP_TARGETIMMED( n ) );
+	release_temp( mop, REF, f->m );
+
+#if 0	
 	for( int i=1; i <= n; i++ ){
 
 		loperand lval = { .islocal = true, .index = table.index + i };	
@@ -145,26 +153,25 @@ void emit_setlist( struct emitter** mce, struct machine_ops* mop, struct frame* 
 		loadim( mop, REF, f->m, _a2, 0 );	// TODO: type
 		mop->move( REF, f->m, val, loperand_to_operand( f, lval ).value );
 	
-		mop->call_cfn( REF, f->m, (uintptr_t)&table_set, 0 );	
+		mop->call_static_cfn( REF, f, (uintptr_t)&table_set, NULL, 0 );	
 
 	}
+#endif
 
 
 
 }
 
 void emit_gettable( struct emitter** mce, struct machine_ops* mop, struct frame* f, loperand dst, loperand table, loperand idx ){
-	operand t = OP_TARGETREG( _a0 );
-	operand i = OP_TARGETREG( _a1 );
-	operand src = OP_TARGETREG( _v0 ); 
 
-	mop->move( REF, f->m, t, loperand_to_operand( f, table ).value );
-	mop->move( REF, f->m, i, loperand_to_operand( f, idx ).value );
-	// TODO: type
+	// TODO: verify its a table and number
+	operand t = loperand_to_operand( f, table ).value;
+	operand i = loperand_to_operand( f, idx ).value;
+	operand d = loperand_to_operand( f, dst ).value;
 
-	mop->call_cfn( REF, f->m, (uintptr_t)&table_get, 0 );
+	// TODO: get return type by pointer arg
+	mop->call_static_cfn( REF, f, (uintptr_t)&table_get, &d, 2, t, i );
 
-	mop->move( REF, f->m, loperand_to_operand( f, dst ).value,  src );
 
 }
 

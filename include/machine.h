@@ -72,8 +72,12 @@ struct machine_ops {
 	void (*call)( struct emitter* me, struct machine* m, label l );
 	void (*ret)( struct emitter* me, struct machine* m );
 
-	// TODO: define the constraits on this
-	void (*call_cfn)( struct emitter* me, struct machine* m, uintptr_t fn, size_t argsz );
+	/*
+	* Calling C functions. Two ways:
+	*	- Static, used for calling internal functions e.g. gettable
+	*	- Dynamic, call embedded C functions from Lua vm.
+	*/
+	void (*call_static_cfn)( struct emitter* me, struct frame* f, uintptr_t fn, const operand* r, size_t argsz, ... );
 	
 	// optional instructions  
 	void (*push)( struct emitter* me, struct machine* m, operand s );

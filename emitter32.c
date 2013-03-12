@@ -137,7 +137,7 @@ static unsigned int ec( struct emitter* e ){
 
 
 static uintptr_t absc( struct emitter* e ){
-	return (uintptr_t)SELF->mcode[ SELF->size / 4 ]; 
+	return (uintptr_t)&SELF->mcode[ SELF->size / 4 ]; 
 }
 
 static struct emitter_ops vtable = {

@@ -83,4 +83,7 @@
 #define s8	$30	/* same like fp! */
 #define ra      $31     /* return address */
 
+
+#define MIPSREG_ISTEMP( r )	( ( (r) >= _t0 && (r) <= _t7 ) || ( (r) >= _t8 && (r) <= _t9 ) )
+
 #endif /* __ASM_MIPS_REGDEF_H */

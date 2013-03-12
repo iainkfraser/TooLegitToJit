@@ -92,37 +92,6 @@ void move( struct emitter* me, struct machine* m, operand d, operand s ){
 }
 
 
-// TODO: take array of operands as argument
-static void call_cfn( struct emitter* me, struct machine* m, uintptr_t fn, size_t argsz ){
-#if 0
-	// first 10 virtual regs mapped to temps so save them 
-	int temps = min( 10, nr_livereg_vreg_occupy( me->nr_locals ) );
-	for( int i=0; i < temps; i++ ){
-		int treg = vreg_to_physical_reg( i );
-		ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( MOP_SW, _sp, treg, (int16_t)-( (i+1) * 4 ) ) );
-	}
-		
-	// need space for temps and function arguments	
-	int stackspace = 4 * ( max( argsz, 4 ) + temps );
-	
-	// create space for args - assume caller has setup a0 and a1
-	ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( MOP_ADDIU, _sp, _sp, (int16_t)( -stackspace ) ) );
-
-	// can assume loading into _v0 is safe because function may overwrite it 
-	loadim( me, _v0, fn );
-	ENCODE_OP( me, GEN_MIPS_OPCODE_3REG( MOP_SPECIAL, _v0, _zero, _ra, MOP_SPECIAL_JALR ) );
-	ENCODE_OP( me, MOP_NOP );	// TODO: one of the delay slots could be saved reg
-	
-	// restore the stack 	
-	ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( MOP_ADDIU, _sp, _sp, (int16_t)( stackspace ) ) );
-	
-	// reload temps
-	for( int i=0; i < temps; i++ ){
-		int treg = vreg_to_physical_reg( i );
-		ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( MOP_LW, _sp, treg, (int16_t)-( (i+1) * 4 ) ) );
-	}
-#endif 
-}
 
 
 struct machine_ops mips_ops = {
@@ -143,7 +112,7 @@ struct machine_ops mips_ops = {
 	.bge = mips_bge,
 	.call = mips_call,
 	.ret = mips_ret,
-	.call_cfn = call_cfn, 
+	.call_static_cfn = mips_static_ccall, 
 	.create_emitter = emitter32_create 
 };
 
