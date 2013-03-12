@@ -15,6 +15,7 @@
 #include "arch/mips/arithmetic.h"
 #include "arch/mips/branch.h"
 #include "arch/mips/call.h"
+#include "arch/mips/jfunc.h"
 
 // use the sp variable in machine struct 
 #undef sp
@@ -112,8 +113,10 @@ struct machine_ops mips_ops = {
 	.bge = mips_bge,
 	.call = mips_call,
 	.ret = mips_ret,
-	.call_static_cfn = mips_static_ccall, 
-	.create_emitter = emitter32_create 
+	.call_static_cfn = mips_static_ccall
+	,.create_emitter = emitter32_create 
+	,.nr_jfuncs = mips_nr_jfuncs
+	,.jf_init = mips_jf_init
 };
 
 #undef ra 

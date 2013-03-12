@@ -243,3 +243,9 @@ void mips_static_ccall( struct emitter* me, struct frame* f, uintptr_t fn, const
 	if( r )
 		_MOP->move( me, f->m, *r, OP_TARGETREG( _v0 ) );
 }
+
+void mips_jf_savencall( struct JFunc* jf, struct emitter* me, struct machine* m ){
+	// save temps in reverse order of machine
+
+	// call register v0 or a0 or whatever
+}

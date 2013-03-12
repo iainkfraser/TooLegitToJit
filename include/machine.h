@@ -14,6 +14,7 @@
 #include "elf.h"
 #endif
 
+struct JFunc;
 
 struct machine {
 	int 		sp,fp,ra;	// stack pointer, frame pointer and return address reg 
@@ -86,6 +87,12 @@ struct machine_ops {
 	void (*push)( struct emitter* me, struct machine* m, operand s );
 	void (*pop)( struct emitter* me, struct machine* m, operand d );
 
+
+	/*
+	* generate arch jit functions see jitfunc.c 
+	*/
+	int (*nr_jfuncs)();
+	void (*jf_init)( struct JFunc* jf, struct emitter* me, struct machine* m, int idx );
 
 	// each machine has an associated emitter 
 	void (*create_emitter)( struct emitter** e, size_t vmlines, e_realloc era );

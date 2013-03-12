@@ -7,6 +7,7 @@ OBJECTS += main.o table.o func.o operand.o stack.o xlogue.o mmap_alloc.o
 
 # arch dependent
 OBJECTS += arch/mips/machine.o arch/mips/arithmetic.o arch/mips/branch.o arch/mips/call.o
+OBJECTS += arch/mips/jfunc.o
 
 OBJDIR := bin
 OBJS := $(patsubst %,$(OBJDIR)/%,$(OBJECTS))

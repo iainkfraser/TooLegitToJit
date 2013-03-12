@@ -1,6 +1,8 @@
 /*
 * (C) Iain Fraser - GPLv3  
-* JIT Functions are functions used exclusively by JIT'r. 
+* JIT Functions are functions used exclusively by JIT'r. Currently
+* implemented as a singleton probably will change in future. However
+* requires a jfunc object passed to all jit functions.  
 */
 
 #include <stdbool.h>
@@ -15,7 +17,12 @@ extern void jinit_epi( struct JFunc* jf, struct machine_ops* mop, struct emitter
 extern void jinit_pro( struct JFunc* jf, struct machine_ops* mop, struct emitter* e, struct machine* m );
 extern void jinit_vresult_postcall( struct JFunc* jf, struct machine_ops* mop, struct emitter* e, struct machine* m );
 
+#if 0
 static struct JFunc jit_functions[ JF_COUNT ];
+#else
+static struct JFunc* jit_functions;
+#endif
+
 static char* jfuncs_code;
 static jf_init jinittable[ JF_COUNT ] = {
 	[ JF_ARG_RES_CPY ] = &jinit_cpy_arg_res
@@ -29,18 +36,27 @@ static jf_init jinittable[ JF_COUNT ] = {
 
 
 struct emitter* jfuncs_init( struct machine_ops* mop, struct machine* m, e_realloc era ){
-	struct emitter* e;
-	struct JFunc *j = jit_functions;
+	assert( !jit_functions );
+	struct emitter *e;
+	struct JFunc *j;
+	const int n = mop->nr_jfuncs();
+	
+	jit_functions = malloc( sizeof( struct JFunc ) * ( JF_COUNT + n ) );
+	assert( jit_functions );	// TODO: correct error handling 
 
+	j = jit_functions;
 	mop->create_emitter( &e, 0, era );
 
-	for( int i = 0; i < JF_COUNT; i++, j++ ){
+	for( int i = 0; i < JF_COUNT + n; i++, j++ ){
 		j->addr = e->ops->ec( e );
 	
 		assert( temps_accessed( m ) == 0 );
 		m->max_access =  0;
 
-		( jinittable[i] )( j, mop, e, m );
+		if( i < JF_COUNT )
+			( jinittable[i] )( j, mop, e, m );
+		else
+			mop->jf_init( j, e, m, i - JF_COUNT );
 
 		j->temp_clobber = m->max_access;
 	}
@@ -49,8 +65,7 @@ struct emitter* jfuncs_init( struct machine_ops* mop, struct machine* m, e_reall
 }
 
 void jfuncs_cleanup(){
-	struct JFunc *j = jit_functions;
-	;
+	free( jit_functions );
 }
 
 void jfuncs_setsection( void* section ){

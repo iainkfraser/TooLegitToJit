@@ -468,6 +468,7 @@ int main( int argc, char* argv[] ){
 		serialise( &main, out, jitfuncs, sizemcode, &mips_mach, e );	
 
 	// cleanup
+	jfuncs_cleanup();
 	e->ops->cleanup( e );
 	ca.free( jitfuncs, sizemcode );
 	cleanup( &main, &ca );
