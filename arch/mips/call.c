@@ -3,6 +3,7 @@
 * MIPS call instructions implementation. 
 */
 
+#include <string.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -130,88 +131,115 @@ static void tempreg_spill( struct emitter* me, struct frame* f, bool isstore ){
 	}
 }
 
+static int zerorow( const int n, int r, uint8_t dgraph[n][n] ){
+	for( int j = 0; j < n; j++ ){
+		if( dgraph[r][j] )
+			return j + 1;
+	}
+
+	return 0;
+}
+
+static bool zerocol( const int n, int c, uint8_t dgraph[n][n] ){
+	for( int i = 0; i < n; i++ ){
+		if( dgraph[i][c] )
+			return false;
+	}
+
+	return true; 
+}
+
+static void assign_arg_regs( struct emitter* me, struct frame* f, const int n, uint8_t dgraph[n][n] ){
+	int more,freed, v;
+
+	/* find a vertex that depends on another vertex but none depend on it */
+	do{
+		more = freed = 0;	
+
+		for( int i = 0; i < n; i++ ){
+			if( ( v = zerorow( n, i, dgraph ) ) ){	// depends on another vertex
+				--v;	// zero based idx
+				if( zerocol( n, i, dgraph ) ){		// nothing depends on it
+					_MOP->move( me, f->m, OP_TARGETREG( _a0 + i ), OP_TARGETREG( _a0 + v ) );	
+					dgraph[i][v-1] = 0;
+					freed++;
+				} else {
+					more = i + 1;
+				}
+			}	
+		}
+
+		// is there a cycle? 
+		if( more && !freed ){
+			assert( false );
+			// TODO: 
+			// spill i-1
+			// set every that depends on i-1 to new temp reg
+		}
+	}while( more ); 
+}
+
 void mips_static_ccall( struct emitter* me, struct frame* f, uintptr_t fn, const operand* r, size_t argsz, ... ){
-	assert( temps_accessed( f->m ) == 0 );	// temps == arg regs	
+//	assert( temps_accessed( f->m ) == 0 );	// temps == arg regs	
 	va_list ap;
 	va_start( ap, argsz );
 
 	const int args_by_reg = 4;
-	uint8_t dep_graph[ args_by_reg ][ args_by_reg ] = {};
-	
-	for( int i = 0; i < 4; i++ ){
-
-	}
-
-	va_end( ap );
-
-	return;
-	// TODO: make this check the temps are actually a0 
-	for( int i = 0; i < min( 4, argsz ); i++ )
-		acquire_temp( _MOP, me, f->m );	
-
-
-	const int wordsz = 4;			// TODO: handle 64 bit
-	const int n = max( args_by_reg, argsz );
-	const int stack_delta = wordsz * n;
-	operand sp = OP_TARGETREG( f->m->sp );
-	operand ds = OP_TARGETIMMED( stack_delta );
-	operand argreg = OP_TARGETREG( _a0 );
-	operand argstk = OP_TARGETDADDR( f->m->sp, -4  );
-	tempreg_spill( me, f, true );
+	operand args[ argsz ];
+	uint8_t dep_graph[ args_by_reg ][ args_by_reg ];
 	
 	for( int i = 0; i < argsz; i++ ){
-		if( i < 4 )
-			_MOP->move( me, f->m, argreg, va_arg( ap, operand ) );	
-		else
-			_MOP->move( me, f->m, argstk, va_arg( ap, operand ) );	// save to stack
-
-		// update reg and stack
-		argreg.reg++;
-		argstk.offset += wordsz;
-
+		args[ i ] = va_arg( ap, operand );	
 	}
 
 	va_end( ap );
-	
+
+	// store all stack based args first, becase we may clobber src temps later.
+	operand dst = OP_TARGETDADDR( f->m->sp, -4 );
+	for( int i = args_by_reg; i < argsz; i++, dst.offset -= 4 ){
+		_MOP->move( me, f->m, dst, args[i] );	
+	}
+
+	// generate single edge dependency matrix and load args that aren't dependent 
+	memset( dep_graph, 0, sizeof( dep_graph ) );
+	for( int i = 0; i < min( argsz, args_by_reg ); i++ ){
+		if( ISO_REG( args[i] ) && MIPSREG_ISARG( args[i].reg ) )
+			dep_graph[i][ MIPSREG_ARGIDX( args[i].reg ) ] = 1;
+			
+	}
+
+	int counter = 0;
+	while( temps_accessed( f->m ) < min( args_by_reg, argsz ) ){
+		acquire_temp( _MOP, me, f->m );
+		counter++;
+	} 
+
+	// move to correct arg registers 
+	assign_arg_regs( me, f, args_by_reg, dep_graph );
+
+	// now depedency conflicts have been resolved load nonreg dependecies
+	for( int i = 0; i < min( argsz, args_by_reg ); i++ ){
+		if( !( ISO_REG( args[i] ) && MIPSREG_ISARG( args[i].reg ) ) )
+			_MOP->move( me, f->m, OP_TARGETREG( _a0 + i ), args[i] );
+	} 
+
+	// spill MIPS temps
+	tempreg_spill( me, f, true );
+
+
+	const operand sp = OP_TARGETREG( f->m->sp );
+	const operand ds = OP_TARGETIMMED( 4 * min( 4, argsz ) );
+	// update stack and call	
 	_MOP->sub( me, f->m, sp, sp, ds );
 	_MOP->call( me, f->m, LBL_ABS( OP_TARGETIMMED( fn ) ) );	// TODO: do explcit call so that put sub into delay slot	
 	_MOP->add( me, f->m, sp, sp, ds  );
 
+	release_tempn( _MOP, me, f->m, counter );
 
-	// reload temps	
+
+	// fill MIPS temps
 	tempreg_spill( me, f, false );
-
-	for( int i = 0; i < min( 4, argsz ); i++ )
-		release_temp( _MOP, me, f->m );	
 
 	if( r )
 		_MOP->move( me, f->m, *r, OP_TARGETREG( _v0 ) );
-#if 0
-	// first 10 virtual regs mapped to temps so save them 
-	int temps = min( 10, nr_livereg_vreg_occupy( me->nr_locals ) );
-	for( int i=0; i < temps; i++ ){
-		int treg = vreg_to_physical_reg( i );
-		ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( MOP_SW, _sp, treg, (int16_t)-( (i+1) * 4 ) ) );
-	}
-		
-	// need space for temps and function arguments	
-	int stackspace = 4 * ( max( argsz, 4 ) + temps );
-	
-	// create space for args - assume caller has setup a0 and a1
-	ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( MOP_ADDIU, _sp, _sp, (int16_t)( -stackspace ) ) );
-
-	// can assume loading into _v0 is safe because function may overwrite it 
-	loadim( me, _v0, fn );
-	ENCODE_OP( me, GEN_MIPS_OPCODE_3REG( MOP_SPECIAL, _v0, _zero, _ra, MOP_SPECIAL_JALR ) );
-	ENCODE_OP( me, MOP_NOP );	// TODO: one of the delay slots could be saved reg
-	
-	// restore the stack 	
-	ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( MOP_ADDIU, _sp, _sp, (int16_t)( stackspace ) ) );
-	
-	// reload temps
-	for( int i=0; i < temps; i++ ){
-		int treg = vreg_to_physical_reg( i );
-		ENCODE_OP( me, GEN_MIPS_OPCODE_2REG( MOP_LW, _sp, treg, (int16_t)-( (i+1) * 4 ) ) );
-	}
-#endif 
 }

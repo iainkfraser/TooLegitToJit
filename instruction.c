@@ -140,7 +140,8 @@ void emit_setlist( struct emitter** mce, struct machine_ops* mop, struct frame* 
 	// get base adress
 	operand base = OP_TARGETREG( acquire_temp( mop, REF, f->m ) );
 	mop->add( REF, f->m, base, OP_TARGETREG( v.value.base ), OP_TARGETIMMED( v.value.offset ) );
-	mop->call_static_cfn( REF, f, (uintptr_t)&table_set, NULL, 3, t.value, base, OP_TARGETIMMED( n ) );
+	mop->call_static_cfn( REF, f, (uintptr_t)&table_setlist, NULL, 4,
+		t.value, base, OP_TARGETIMMED( offset ), OP_TARGETIMMED( n ) );
 	release_temp( mop, REF, f->m );
 
 #if 0	

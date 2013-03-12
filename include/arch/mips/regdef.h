@@ -85,5 +85,7 @@
 
 
 #define MIPSREG_ISTEMP( r )	( ( (r) >= _t0 && (r) <= _t7 ) || ( (r) >= _t8 && (r) <= _t9 ) )
+#define MIPSREG_ISARG( r )	( (r) >= _a0 && (r) <= _a3 )
+#define MIPSREG_ARGIDX( r )	( (r) - _a0 )
 
 #endif /* __ASM_MIPS_REGDEF_H */

@@ -37,4 +37,9 @@ int table_get( struct table* t, int idx, int* type ){
 	return t->array[ idx-1 ];
 }
 
+void table_setlist( struct table* t, void* src, int idx, int sz ){
+	for( int i = 0; i < sz; i++ ){
+		t->array[ idx + i ] = i + 1;	// TODO: load from src using frame
+	}
+}
 

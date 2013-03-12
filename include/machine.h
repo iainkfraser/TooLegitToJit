@@ -75,7 +75,10 @@ struct machine_ops {
 	/*
 	* Calling C functions. Two ways:
 	*	- Static, used for calling internal functions e.g. gettable
-	*	- Dynamic, call embedded C functions from Lua vm.
+	*	- Dynamic, call embedded C functions from Lua vm.i
+	*
+	* Can clober any temp regs. Do not expect temp regs to be restored after
+	* call.
 	*/
 	void (*call_static_cfn)( struct emitter* me, struct frame* f, uintptr_t fn, const operand* r, size_t argsz, ... );
 	
