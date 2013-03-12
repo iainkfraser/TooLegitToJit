@@ -54,6 +54,14 @@ void emit_footer( struct machine_ops* mop, struct emitter* e, struct frame* f ){
 #define INVERSE( i, n )	( n - ( i + 1 ) )
 #define NR_SPARE_REGS( f )	( (f)->m->nr_reg - (f)->m->nr_temp_regs )
 
+intptr_t vreg_value_offset( int idx ){
+	return -( idx * 8 );
+}
+
+intptr_t vreg_type_offset( int idx ){
+	return -( idx * 8 + 4 );
+}
+
 static int vreg_to_physical_reg( struct frame* f, int vreg ){
 	assert( f );
 	assert( f->m );

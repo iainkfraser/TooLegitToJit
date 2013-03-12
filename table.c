@@ -2,11 +2,13 @@
 * (C) Iain Fraser - GPLv3
 */ 
 
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <stddef.h>
 #include <errno.h>
+#include "frame.h"
 
 #define THROW( e )	do{}while(0)	
 
@@ -39,7 +41,10 @@ int table_get( struct table* t, int idx, int* type ){
 
 void table_setlist( struct table* t, void* src, int idx, int sz ){
 	for( int i = 0; i < sz; i++ ){
-		t->array[ idx + i ] = i + 1;	// TODO: load from src using frame
+	//	t->array[ idx + i ] = (char*)src + vreg_value_offset( i )
+		memcpy( &t->array[ idx + i ],
+			(char*)src + vreg_value_offset( i ),
+			sizeof( int ) );	// TODO: how do you know size? Need word size
 	}
 }
 
