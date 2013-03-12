@@ -10,6 +10,7 @@
 #include <assert.h>
 #include "machine.h"
 #include "emitter32.h"
+#include "arch/mips/machine.h"
 #include "arch/mips/regdef.h"
 #include "arch/mips/opcodes.h"
 #include "arch/mips/arithmetic.h"

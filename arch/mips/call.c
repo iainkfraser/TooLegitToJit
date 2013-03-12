@@ -13,6 +13,7 @@
 #include "emitter32.h"
 #include "bit_manip.h"
 #include "frame.h"
+#include "arch/mips/machine.h"
 #include "arch/mips/regdef.h"
 #include "arch/mips/opcodes.h"
 #include "arch/mips/arithmetic.h"
@@ -23,14 +24,6 @@
 #undef sp
 #undef fp
 
-extern struct machine_ops mips_ops;
-
-#define _MOP	( &mips_ops )
-#define RELEASE_OR_NOP( me, m )				\
-	do{						\
-		if( !release_temp( _MOP, me, m ) )	\
-			EMIT( MI_NOP() );		\
-	}while( 0 )
 
 /*
 * TODO: write up in machine spec that only b and call need to do absolute addressing.
@@ -244,8 +237,3 @@ void mips_static_ccall( struct emitter* me, struct frame* f, uintptr_t fn, const
 		_MOP->move( me, f->m, *r, OP_TARGETREG( _v0 ) );
 }
 
-void mips_jf_savencall( struct JFunc* jf, struct emitter* me, struct machine* m ){
-	// save temps in reverse order of machine
-
-	// call register v0 or a0 or whatever
-}

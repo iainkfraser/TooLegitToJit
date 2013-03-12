@@ -465,7 +465,7 @@ int main( int argc, char* argv[] ){
 	if( !disassem )
 		execute( &main, jfunc_addr( e, JF_PROLOGUE ) );
 	else
-		serialise( &main, out, jitfuncs, sizemcode, &mips_mach, e );	
+		serialise( &main, out, jitfuncs, sizemcode, &mips_mach, e, mips_ops.nr_jfuncs() );	
 
 	// cleanup
 	jfuncs_cleanup();

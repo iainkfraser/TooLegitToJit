@@ -17,4 +17,6 @@ void save_frame_limit( struct machine_ops* mop, struct emitter* e, struct frame*
 int jf_loadlocal_offset( struct machine* m, int nr_locals );
 int jf_storelocal_offset( struct machine* m, int nr_locals );
 
+int max_live_locals( struct machine* m );
+
 #endif 

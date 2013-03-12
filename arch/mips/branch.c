@@ -11,16 +11,11 @@
 #include "macros.h"
 #include "emitter32.h"
 #include "bit_manip.h"
+#include "arch/mips/machine.h"
 #include "arch/mips/regdef.h"
 #include "arch/mips/opcodes.h"
 #include "arch/mips/arithmetic.h"
 
-extern void move( struct emitter* me, struct machine* m, operand d, operand s );
-extern bool is_add_immed( operand o );
-extern bool is_sub_immed( operand o );
-
-extern struct machine_ops mips_ops;
-#define _MOP	( &mips_ops )
 #define VALIDATE_OPERANDS( operator )					\
 	do{									\
 		assert( s.tag != OT_IMMED );					\

@@ -20,6 +20,8 @@ struct JFunc {
 
 enum { JF_ARG_RES_CPY, JF_STORE_LOCALS, JF_LOAD_LOCALS, JF_EPILOGUE, JF_PROLOGUE, JF_VARRES_POSTCALL, JF_COUNT };
 
+static inline int jf_arch_idx( int idx ){ return JF_COUNT + idx; }
+
 struct emitter* jfuncs_init( struct machine_ops* mop, struct machine* m, e_realloc era );
 void jfuncs_setsection( void* section );
 void jfuncs_cleanup( );

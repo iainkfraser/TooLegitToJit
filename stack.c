@@ -67,7 +67,7 @@ void save_frame_limit( struct machine_ops* mop, struct emitter* e, struct frame*
 * Jit functions for storing/loading registers. Used before Lua call.
 */
 
-static int max_live_locals( struct machine* m ){
+int max_live_locals( struct machine* m ){
 	return int_ceil_div( m->nr_reg - m->nr_temp_regs, 2 );
 }
 
