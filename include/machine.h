@@ -113,6 +113,8 @@ bool disable_spill( struct machine* m );
 void restore_spill( struct machine* m, bool prior );
 void enable_spill( struct machine* m );
 
+#define has_spill( m )	( temps_accessed( m ) > m->nr_temp_regs )
+
 
 /*
 * Load operands into simultaneous registers ( using temporaries ). 

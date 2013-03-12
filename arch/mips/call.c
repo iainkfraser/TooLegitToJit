@@ -112,6 +112,9 @@ static int zerorow( const int n, int r, uint8_t dgraph[n][n] ){
 
 static bool zerocol( const int n, int c, uint8_t dgraph[n][n] ){
 	for( int i = 0; i < n; i++ ){
+		if( i == c )	// ignore self ref which indicates stack dependency 
+			continue;
+
 		if( dgraph[i][c] )
 			return false;
 	}
@@ -119,38 +122,57 @@ static bool zerocol( const int n, int c, uint8_t dgraph[n][n] ){
 	return true; 
 }
 
-static void assign_arg_regs( struct emitter* me, struct frame* f, const int n, uint8_t dgraph[n][n] ){
-	int more,freed, v;
+static void resolv_cycle( struct emitter* me, struct frame* f, const int n, uint8_t dgraph[n][n], int v, int* sp ){
+	// store vertex on stack
+	*sp -= 4;
 
-	/* find a vertex that depends on another vertex but none depend on it */
+	for( int i = 0; i < n; i++ ){
+		if( zerorow( n, i, dgraph ) == v ){
+			dgraph[i][v-1] = 0;
+			dgraph[i][i] = *sp;	// indicate that it depends on stack value	
+		}
+	}
+}
+
+/* resolve argument registers dependcies ( using stack if needbe ) */
+static void assign_arg_regs( struct emitter* me, struct frame* f, const int n, uint8_t dgraph[n][n] ){
+	int unresolved,resolved, v, stack = -4;
+	operand dst, src;
+
 	do{
-		more = freed = 0;	
+		unresolved = resolved = 0;	
 
 		for( int i = 0; i < n; i++ ){
-			if( ( v = zerorow( n, i, dgraph ) ) ){	// depends on another vertex
+			dst = OP_TARGETREG( _a0 + i );
+
+			// does vertex i depend on ( at most ) 1 vertex?
+			if( ( v = zerorow( n, i, dgraph ) ) ){	
 				--v;	// zero based idx
-				if( zerocol( n, i, dgraph ) ){		// nothing depends on it
-					_MOP->move( me, f->m, OP_TARGETREG( _a0 + i ), OP_TARGETREG( _a0 + v ) );	
-					dgraph[i][v-1] = 0;
-					freed++;
+
+				// do other vertices ( 1 or more ) depend on i?
+				if( zerocol( n, i, dgraph ) ){		
+					src =  v == i ?
+						OP_TARGETDADDR( f->m->sp, dgraph[i][i] ) :
+						OP_TARGETREG( _a0 + v );
+	
+					_MOP->move( me, f->m, dst, src );
+					dgraph[i][v] = 0;
+					resolved++;
 				} else {
-					more = i + 1;
+					unresolved = i + 1;
 				}
 			}	
 		}
 
 		// is there a cycle? 
-		if( more && !freed ){
-			assert( false );
-			// TODO: 
-			// spill i-1
-			// set every that depends on i-1 to new temp reg
-		}
-	}while( more ); 
+		if( unresolved && !resolved )
+			resolv_cycle( me, f, n, dgraph, unresolved, &stack );				
+	}while( unresolved ); 
 }
 
 void mips_static_ccall( struct emitter* me, struct frame* f, uintptr_t fn, const operand* r, size_t argsz, ... ){
-//	assert( temps_accessed( f->m ) == 0 );	// temps == arg regs	
+	assert( !has_spill( f->m ) );	// this fn call will clobber the crap out spilled regs
+
 	va_list ap;
 	va_start( ap, argsz );
 
@@ -184,7 +206,7 @@ void mips_static_ccall( struct emitter* me, struct frame* f, uintptr_t fn, const
 		counter++;
 	} 
 
-	// move to correct arg registers 
+	// move to correct arg registers - TODO: can clobber stack, there need to update stack before this??  
 	assign_arg_regs( me, f, args_by_reg, dep_graph );
 
 	// now depedency conflicts have been resolved load nonreg dependecies
