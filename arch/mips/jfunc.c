@@ -44,9 +44,6 @@ void mips_jf_init( struct JFunc* jf, struct emitter* me, struct machine* m, int 
 * Spill/Fill MIPS temporary registers. 
 */
 
-static bool is_mips_temp( operand o ){
-	return ISO_REG( o ) && MIPSREG_ISTEMP( o.reg );
-}
 
 static void do_spill( struct emitter* me, struct frame* f, operand a, operand b, bool doswap ){
 	if( doswap )

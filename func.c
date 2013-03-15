@@ -53,3 +53,11 @@ struct closure* closure_create( struct proto* p, struct closure** pparent, struc
 	return c;
 }
 
+/*
+* Migrate all openvalues that beyond(below) the stackbase. Called when
+* function is returning. 
+*/ 
+void closure_close( struct TValue* stackbase ){
+	printf("closing closure\n");
+}
+

@@ -17,8 +17,9 @@ extern struct machine_ops mips_ops;
 
 
 
-extern void move( struct emitter* me, struct machine* m, operand d, operand s );
-extern bool is_add_immed( operand o );
-extern bool is_sub_immed( operand o );
+void move( struct emitter* me, struct machine* m, operand d, operand s );
+bool is_add_immed( operand o );
+bool is_sub_immed( operand o );
+bool is_mips_temp( operand o );
 
 #endif

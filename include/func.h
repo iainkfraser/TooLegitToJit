@@ -8,6 +8,7 @@
 #include "lobject.h"
 
 struct closure* closure_create( struct proto* p, struct closure** pparent, struct TValue* stackbase );
+void closure_close( struct TValue* stackbase );
 
 #endif
 

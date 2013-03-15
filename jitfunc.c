@@ -21,6 +21,7 @@ extern void jinit_vresult_postcall( struct JFunc* jf, struct machine_ops* mop, s
 static struct JFunc jit_functions[ JF_COUNT ];
 #else
 static struct JFunc* jit_functions;
+static unsigned int  nr_jf_init = 0;
 #endif
 
 static char* jfuncs_code;
@@ -47,7 +48,7 @@ struct emitter* jfuncs_init( struct machine_ops* mop, struct machine* m, e_reall
 	j = jit_functions;
 	mop->create_emitter( &e, 0, era );
 
-	for( int i = 0; i < JF_COUNT + n; i++, j++ ){
+	for( int i = 0; i < JF_COUNT + n; i++, j++, nr_jf_init++ ){
 		j->addr = e->ops->ec( e );
 	
 		assert( temps_accessed( m ) == 0 );
@@ -77,6 +78,7 @@ struct JFunc* jfuncs_get( int idx ){
 }
 
 void* do_jfunc_addr( struct emitter* e, int idx, int off ){
+	assert( idx < nr_jf_init );		// don't call a jfunc thats not init'd yet
 	return e->ops->offset( e, jfuncs_get( idx )->addr + off, jfuncs_code );
 }
 

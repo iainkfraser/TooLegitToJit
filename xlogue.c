@@ -16,6 +16,7 @@
 #include "synthetic.h"
 #include "stack.h"
 #include "jitfunc.h"
+#include "func.h"
 
 static int stack_frame_size( int nr_locals ){
 	int k = 4 * 4;	// ra, closure, return position, nr results 
@@ -371,23 +372,24 @@ void jinit_cpy_arg_res( struct JFunc* jf, struct machine_ops* mop, struct emitte
 
 void jinit_epi( struct JFunc* jf, struct machine_ops* mop, struct emitter* e, struct machine* m ){
 	// phoney frame 
-	struct frame F = { .m = m, .nr_locals = 1, .nr_params = 0 };
+	struct frame F = { .m = m, .nr_locals = 0, .nr_params = 0 };
 	struct frame *f = &F;
 
 	const operand sp = OP_TARGETREG( m->sp );
 	const operand fp = OP_TARGETREG( m->fp );
 
+	// migrate closed upvalues 
+	mop->call_static_cfn( e, f, (uintptr_t)&closure_close, NULL, 1, get_frame_closure( f ) );  
+	
 	operand rargs[ RA_SIZE ];
 	prefer_nontemp_acquire_reg( mop, e, f->m, RA_SIZE, rargs );
 
 	// reset stack 
-//	mop->move( e, m, sp, fp );
 	mop->add( e, m, sp, fp, OP_TARGETIMMED( -4 ) );
 	if( m->is_ra ) 
 		popn( mop, e, m , 3, rargs[ RA_DST ], fp, OP_TARGETREG( m->ra ) );
 	else
 		popn( mop, e, m, 2, rargs[ RA_DST ], fp ); 
-//		pop( mop, e, m, fp );
 
 	mop->ret( e, m );
 	

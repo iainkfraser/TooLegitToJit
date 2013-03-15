@@ -93,7 +93,9 @@ void move( struct emitter* me, struct machine* m, operand d, operand s ){
 	}
 }
 
-
+bool is_mips_temp( operand o ){
+	return ISO_REG( o ) && MIPSREG_ISTEMP( o.reg );
+}
 
 
 struct machine_ops mips_ops = {

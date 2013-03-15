@@ -170,9 +170,22 @@ static void assign_arg_regs( struct emitter* me, struct frame* f, const int n, u
 	}while( unresolved ); 
 }
 
+static bool is_any_temps( struct frame* f ){
+	vreg_operand on;
+	for( int i = f->nr_locals; i >= 0; i-- ){
+		on = vreg_to_operand( f, i, false );
+
+		if( is_mips_temp( on.value ) || is_mips_temp( on.type ) )
+			return true;
+	}
+	
+	return false;
+}
+
 void mips_static_ccall( struct emitter* me, struct frame* f, uintptr_t fn, const operand* r, size_t argsz, ... ){
 	assert( !has_spill( f->m ) );	// this fn call will clobber the crap out spilled regs
 
+	const bool require_tspill = is_any_temps( f );
 	va_list ap;
 	va_start( ap, argsz );
 
@@ -216,7 +229,9 @@ void mips_static_ccall( struct emitter* me, struct frame* f, uintptr_t fn, const
 	} 
 
 	// spill MIPS temps
-	jfunc_call( _MOP, me, f->m, jf_arch_idx( MJF_STORETEMP ), mjf_storetemp_offset( f->m, f->nr_locals ), JFUNC_UNLIMITED_STACK, 0 );
+	if( require_tspill )
+		jfunc_call( _MOP, me, f->m, jf_arch_idx( MJF_STORETEMP ), 
+			mjf_storetemp_offset( f->m, f->nr_locals ), JFUNC_UNLIMITED_STACK, 0 );
 
 	const operand sp = OP_TARGETREG( f->m->sp );
 	const operand ds = OP_TARGETIMMED( 4 * min( 4, argsz ) );
@@ -229,7 +244,9 @@ void mips_static_ccall( struct emitter* me, struct frame* f, uintptr_t fn, const
 
 
 	// fill MIPS temps
-	jfunc_call( _MOP, me, f->m, jf_arch_idx( MJF_LOADTEMP ), mjf_loadtemp_offset( f->m, f->nr_locals ), JFUNC_UNLIMITED_STACK, 0 );
+	if( require_tspill )
+		jfunc_call( _MOP, me, f->m, jf_arch_idx( MJF_LOADTEMP ), 
+			mjf_loadtemp_offset( f->m, f->nr_locals ), JFUNC_UNLIMITED_STACK, 0 );
 
 	if( r )
 		_MOP->move( me, f->m, *r, OP_TARGETREG( _v0 ) );
