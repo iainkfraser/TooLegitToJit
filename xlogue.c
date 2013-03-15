@@ -14,7 +14,6 @@
 #include "machine.h"
 #include "lopcodes.h"
 #include "synthetic.h"
-#include "lua.h"
 #include "stack.h"
 #include "jitfunc.h"
 

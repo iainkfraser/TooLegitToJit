@@ -8,7 +8,7 @@
 #define lopcodes_h
 
 /* @ikf: not using the below include because bottom of file undefined */
-#if 1 
+#if 0 
 #include "llimits.h"
 #else
 #define cast(t, exp)	((t)(exp))
@@ -270,7 +270,7 @@ OP_EXTRAARG/*	Ax	extra (larger) argument for previous opcode	*/
 #define NUM_OPCODES	(cast(int, OP_EXTRAARG) + 1)
 
 /* @ikf not using below code */ 
-#if 1 
+#if 0 
 
 /*===========================================================================
   Notes:
@@ -324,9 +324,9 @@ LUAI_DDEC const lu_byte luaP_opmodes[NUM_OPCODES];
 LUAI_DDEC const char *const luaP_opnames[NUM_OPCODES+1];  /* opcode names */
 
 
+#endif
+
 /* number of list items to accumulate before a SETLIST instruction */
 #define LFIELDS_PER_FLUSH	50
-
-#endif
 
 #endif

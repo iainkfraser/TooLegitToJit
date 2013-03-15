@@ -10,30 +10,7 @@
 #include "emitter.h"
 #include "frame.h"
 #include "operand.h"
-
-struct proto {
-	int linedefined;
-	int lastlinedefined;
-	int sizecode;
-	int sizemcode;
-	int nrconstants;	
-	int nrprotos;
-	uint8_t numparams;
-	uint8_t is_vararg;
-	uint8_t maxstacksize;	
-	void*	code;
-	void*	code_start;
-
-#ifdef _ELFDUMP_
-	int	strtabidx;	// string table index
-	int	secoff;
-	int	secend;
-#endif
-
-	struct proto* subp;	// child prototypes 
-
-};
-
+#include "lobject.h"
 
 void emit_loadk( struct emitter** mce, struct machine_ops* mop, struct frame* f, int l, int k );
 void emit_move( struct emitter** mce, struct machine_ops* mop, struct frame* f, loperand d, loperand s );

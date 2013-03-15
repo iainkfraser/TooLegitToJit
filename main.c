@@ -26,6 +26,7 @@
 #include "macros.h"
 #include "jitfunc.h"
 #include "elf.h"
+#include "lstate.h"
 
 struct code_alloc {
 	void* ( *alloc )( size_t );
@@ -170,13 +171,15 @@ int ignore_debug( FILE* f, struct proto* p ){
 	return 0;
 }
 
-int ignore_upvalues( FILE* f, struct proto* p ){
-	int n; char up[2];
-	fread( &n, sizeof( int ), 1, f );
-	for( int i = 0; i < n; i++ ){
-		fread( up, 1, 2, f );
-	}
+int load_upvalues( FILE* f, struct proto* p ){
+	char up[2];
+	load_member( p, sizeupvalues, f );
+	
+	p->uvd = malloc( sizeof( struct upval_desc ) * p->sizeupvalues );
+	if( !p->subp )
+		return -ENOMEM;		 
 
+	fread( p->uvd, sizeof( struct upval_desc ), p->sizeupvalues, f );	
 	return 0; 
 }
 
@@ -341,7 +344,7 @@ int load_function( FILE* f, struct proto* p, struct code_alloc* ca, struct machi
 	if( ret = load_code( f, p, ca, m, mop ) )
 		return ret;
 
-	ignore_upvalues( f, p );
+	load_upvalues( f, p );
 	ignore_debug( f, p );
 	
 
@@ -447,6 +450,9 @@ int main( int argc, char* argv[] ){
 	extern struct machine mips_mach;
 	extern struct machine_ops mips_ops;
 
+	lua_State ls;
+	lstate_preinit( &ls );
+
 	// force allow spill
 	mips_mach.allow_spill = true;
 
@@ -461,6 +467,9 @@ int main( int argc, char* argv[] ){
 	// verify header and perform JIT  
 	do_cfail( validate_header( f ), "unacceptable header" );
 	do_cfail( load_function( f, &main, &ca, &mips_mach, &mips_ops ), "unable to load func" );
+
+	// create main closure 
+	assert( main.sizeupvalues == 1 );
 
 	if( !disassem )
 		execute( &main, jfunc_addr( e, JF_PROLOGUE ) );
