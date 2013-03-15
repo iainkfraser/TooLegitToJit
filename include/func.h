@@ -5,10 +5,9 @@
 #ifndef _FUNC_H_
 #define _FUNC_H_
 
-#include "instruction.h"
+#include "lobject.h"
 
-struct closure;
-struct closure* closure_create( struct proto* addr, struct closure* c );
+struct closure* closure_create( struct proto* p, struct closure* parent, struct TValue* stackbase );
 
 #endif
 

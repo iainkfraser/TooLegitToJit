@@ -9,6 +9,7 @@
 
 #include "machine.h"
 #include "emitter.h"
+#include "lobject.h"
 
 typedef struct frame {
 	struct machine*		m;	
@@ -44,5 +45,6 @@ vreg_operand const_to_operand( struct frame* f, int k );
 // pointer mapping for stack only
 intptr_t vreg_value_offset( int idx );
 intptr_t vreg_type_offset( int idx ); 
+struct TValue* vreg_tvalue_offset( struct TValue* base, int idx );
 
 #endif

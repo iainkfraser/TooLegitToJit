@@ -10,6 +10,7 @@
 #include "frame.h"
 #include "lopcodes.h"
 #include "xlogue.h"
+#include "lobject.h"
 
 void init_consts( struct frame* f, int n ){
 	f->consts = malloc( sizeof( operand ) * n );
@@ -61,6 +62,11 @@ intptr_t vreg_value_offset( int idx ){
 intptr_t vreg_type_offset( int idx ){
 	return -( idx * 8 + 4 );
 }
+
+struct TValue* vreg_tvalue_offset( struct TValue* base, int idx ){
+	return base - idx;
+} 
+
 
 static int vreg_to_physical_reg( struct frame* f, int vreg ){
 	assert( f );

@@ -6,18 +6,30 @@
 #ifndef _LOBJECT_H_
 #define _LOBJECT_H_
 
+#include <stdbool.h>
 #include "list.h"
 
-typedef int TValue;
+typedef uint32_t word;
+typedef word lua_Number;
+
+union Value {
+	// garbage collectable object
+	bool		b;
+	lua_Number	n;
+	// light userdata
+	// light C function
+};
+
+struct TValue {
+	word w;		// compile will word align might as well make it explcit	
+	union Value v;
+};	// tagged value
 
 struct UpVal {
-	TValue* val;
+	struct TValue* val;
 	union {
-		TValue v;
-		struct {
-			struct UpVal *prev;
-			struct UpVal *next;
-		};
+		struct TValue v;
+		struct list_head link;
 	};
 };
 
@@ -31,7 +43,7 @@ struct upval_desc {
 
 struct closure {
 	struct proto* p;
-	uint32_t upval[];	
+	struct UpVal* uvs[];	
 };
 
 

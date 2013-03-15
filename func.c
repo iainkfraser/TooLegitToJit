@@ -2,12 +2,50 @@
 * (C) Iain Fraser - GPLv3 
 */
 
+#include <stdbool.h>
+#include <assert.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
+#include "frame.h"
+#include "lstate.h"
 #include "func.h"
 
 
-struct closure* closure_create( struct proto* addr, struct closure* c ){
-	printf("create closure %p\n", addr->code );
+struct UpVal* find_stackupval( lua_State* ls, struct TValue* stackbase, int idx ){
+	struct list_head *seek;
+	struct UpVal* uv;
+	struct TValue* dst = vreg_tvalue_offset( stackbase, idx );
+
+	list_for_each( seek, &ls->openuvs ){
+		uv = list_entry( seek, struct UpVal, link );	
+		if( uv->val == dst )
+			return uv;		
+	}
+
+	// create new upval
+	uv = malloc( sizeof( struct UpVal ) );
+	if( !uv )
+		assert( false );		// TODO: jump with out of memory exception
+
+	uv->val = dst;
+	list_add( &uv->link, &ls->openuvs );
+	return uv;	
+}
+
+struct closure* closure_create( struct proto* p, struct closure* parent, struct TValue* stackbase ){
+	size_t sz = sizeof( struct closure ) + sizeof( struct UpVal* ) * p->sizeupvalues;
+	struct closure* c = malloc( sz );
+	if( !c )
+		assert( false );		// TODO: jump with out of memory exception
+
+	for( int i = 0; i < p->sizeupvalues; i++ ){
+		if( p->uvd[i].instack )
+			c->uvs[i] = find_stackupval( current_state(), stackbase, p->uvd[i].idx );	
+		else 
+			c->uvs[i] = parent->uvs[ p->uvd[i].idx ];	
+		
+	}
+	return NULL;
 }
 
