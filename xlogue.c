@@ -423,17 +423,28 @@ void jinit_pro( struct JFunc* jf, struct machine_ops* mop, struct emitter* e, st
 	// set ebp and update stack
 	mop->add( e, f->m, fp, sp, OP_TARGETIMMED( 4 ) );	// point to ebp so add 4 
 
+	/*
+	* Get start instruction from closure by: rargs[ RA_SRC ]->p->code_start. Use rargs[ RA_EXPECT ] which is
+	* not set precall. TODO: alias the enum.  
+	*/	
+	mop->move( e, f->m, rargs[ RA_EXPECT ], OP_TARGETDADDR( rargs[ RA_SRC ].reg, 0 ) ); 
+	mop->move( e, f->m, rargs[ RA_EXPECT ], OP_TARGETDADDR( rargs[ RA_EXPECT ].reg, offsetof( struct closure, p ) ) );
+	mop->move( e, f->m, rargs[ RA_EXPECT ], OP_TARGETDADDR( rargs[ RA_EXPECT ].reg, offsetof( struct proto, code_start ) ) );
+
 	// set src ( always start after closure see Lua VM for reason )
 	mop->add( e, f->m, rargs[ RA_SRC ], rargs[ RA_SRC ], OP_TARGETIMMED( -8 ) );
 	mop->add( e, f->m, rargs[ RA_DST ], OP_TARGETREG( basestack.value.base ), OP_TARGETIMMED( basestack.value.offset ) );
-		
 
 	/*
 	* Call the actual function, which is the closure. On RISC this will clobber
 	* temp hopefully this isn't a live reg or we will get exception. On CISC
 	* there is probably indirect direct address jmp instruction ( x86 does 0 ). 
 	*/
+#if 0
 	mop->b( e, f->m, LBL_ABS( OP_TARGETDADDR( rargs[ RA_SRC ].reg, 8 ) ) );
+#else
+	mop->b( e, f->m, LBL_ABS( rargs[ RA_EXPECT ] ) );
+#endif
 
 	prefer_nontemp_release_reg( mop, e, f->m, RA_SIZE );
 

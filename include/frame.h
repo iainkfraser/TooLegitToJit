@@ -47,4 +47,6 @@ intptr_t vreg_value_offset( int idx );
 intptr_t vreg_type_offset( int idx ); 
 struct TValue* vreg_tvalue_offset( struct TValue* base, int idx );
 
+operand get_frame_closure( struct frame* f );
+
 #endif

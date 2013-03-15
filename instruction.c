@@ -177,6 +177,16 @@ void emit_gettable( struct emitter** mce, struct machine_ops* mop, struct frame*
 }
 
 void emit_closure( struct emitter** mce, struct machine_ops* mop, struct frame* f, loperand dst, struct proto* p ){
+	// TODO: set type of dst to closure 
+	operand d = loperand_to_operand( f, dst ).value;
+	operand pproto = OP_TARGETIMMED( (uintptr_t)p );
+	operand parentc = get_frame_closure( f );  
+	operand stackbase = vreg_to_operand( f, 0, true ).type;
+	 
+	
+
+	mop->call_static_cfn( REF, f, (uintptr_t)&closure_create, &d, 3, pproto, parentc, stackbase );
+	return;
 	// TODO: load the current closure into the _a1
 //	loadim( REF, _a0, (uintptr_t)p );
 //	call_fn( REF, (uintptr_t)&closure_create, 0 );

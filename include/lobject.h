@@ -41,12 +41,6 @@ struct upval_desc {
 
 
 
-struct closure {
-	struct proto* p;
-	struct UpVal* uvs[];	
-};
-
-
 struct proto {
 	int linedefined;
 	int lastlinedefined;
@@ -69,6 +63,12 @@ struct proto {
 
 	struct proto *subp;	// child prototypes 
 	struct upval_desc *uvd;
+};
+
+
+struct closure {
+	struct proto* p;
+	struct UpVal* uvs[];	
 };
 
 #endif

@@ -363,7 +363,11 @@ static void execute( struct closure* cmain, void* prologue ){
 
 #if defined(__mips__)
 	// TODO: make this more generic - probably have func in xlogue
+#if 0
 	register uint32_t ci asm("s1") = (uint32_t)&chunk;
+#else
+	register uint32_t ci asm("s1") = (uintptr_t)&cmain;
+#endif
 	uint32_t pro = (uint32_t)prologue;
 	asm("jalr %0" :: "r" (pro) );
 /*	asm("sw $ra, -4($sp)" );

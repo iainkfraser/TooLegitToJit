@@ -117,3 +117,7 @@ int code_start( struct frame* f ){
 	return f->pro; 
 }
 
+operand get_frame_closure( struct frame* f ){
+	return OP_TARGETDADDR( f->m->fp, -4 );
+}
+
