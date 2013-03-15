@@ -33,6 +33,31 @@ struct UpVal* find_stackupval( lua_State* ls, struct TValue* stackbase, int idx 
 	return uv;	
 }
 
+/*
+* Migrate all openvalues that beyond(below) the stackbase. Called when
+* function is returning. 
+*/ 
+void closure_close( struct TValue* stackbase ){
+	lua_State* ls = current_state();
+	struct UpVal* uv;
+	struct list_head *seek,*safe;
+	list_for_each_safe( seek, safe, &ls->openuvs ){
+		uv = list_entry( seek, struct UpVal, link );	
+	
+		assert( uv->val != &uv->v );	// all openvalues are on the stack
+
+		// assume stack grows downwards 
+		if( uv->val > stackbase )
+			break; 
+
+		list_del( seek ); 
+		// TODO: call garbage collect? 
+	}  
+}
+
+/*
+* Close environment by linking all upvalues. 
+*/
 struct closure* closure_create( struct proto* p, struct closure** pparent, struct TValue* stackbase ){
 	#define parent	( *pparent )	// pparent maybe NULL e.g. main chunk so do lazy deref
 
@@ -53,11 +78,4 @@ struct closure* closure_create( struct proto* p, struct closure** pparent, struc
 	return c;
 }
 
-/*
-* Migrate all openvalues that beyond(below) the stackbase. Called when
-* function is returning. 
-*/ 
-void closure_close( struct TValue* stackbase ){
-	printf("closing closure\n");
-}
 
