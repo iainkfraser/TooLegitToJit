@@ -7,7 +7,7 @@
 
 #include "lobject.h"
 
-struct closure* closure_create( struct proto* p, struct closure* parent, struct TValue* stackbase );
+struct closure* closure_create( struct proto* p, struct closure** pparent, struct TValue* stackbase );
 
 #endif
 

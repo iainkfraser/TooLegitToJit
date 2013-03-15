@@ -33,7 +33,9 @@ struct UpVal* find_stackupval( lua_State* ls, struct TValue* stackbase, int idx 
 	return uv;	
 }
 
-struct closure* closure_create( struct proto* p, struct closure* parent, struct TValue* stackbase ){
+struct closure* closure_create( struct proto* p, struct closure** pparent, struct TValue* stackbase ){
+	#define parent	( *pparent )	// pparent maybe NULL e.g. main chunk so do lazy deref
+
 	size_t sz = sizeof( struct closure ) + sizeof( struct UpVal* ) * p->sizeupvalues;
 	struct closure* c = malloc( sz );
 	if( !c )
