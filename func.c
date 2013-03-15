@@ -46,6 +46,8 @@ struct closure* closure_create( struct proto* p, struct closure* parent, struct 
 			c->uvs[i] = parent->uvs[ p->uvd[i].idx ];	
 		
 	}
-	return NULL;
+
+	c->p = p;
+	return c;
 }
 

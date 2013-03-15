@@ -27,6 +27,7 @@
 #include "jitfunc.h"
 #include "elf.h"
 #include "lstate.h"
+#include "func.h"
 
 struct code_alloc {
 	void* ( *alloc )( size_t );
@@ -352,11 +353,11 @@ int load_function( FILE* f, struct proto* p, struct code_alloc* ca, struct machi
 
 }
 
-static void execute( struct proto* main, void* prologue ){
+static void execute( struct closure* cmain, void* prologue ){
 	struct timeval tv;
 	int x[9];
 	uint32_t start,end;
-	int (*chunk)() = main->code_start; 
+	int (*chunk)() = cmain->p->code_start; 
 	gettimeofday( &tv, NULL );
 	start = tv.tv_sec * 1000 + tv.tv_usec / 1000;
 
@@ -468,13 +469,20 @@ int main( int argc, char* argv[] ){
 	do_cfail( validate_header( f ), "unacceptable header" );
 	do_cfail( load_function( f, &main, &ca, &mips_mach, &mips_ops ), "unable to load func" );
 
-	// create main closure 
-	assert( main.sizeupvalues == 1 );
 
-	if( !disassem )
-		execute( &main, jfunc_addr( e, JF_PROLOGUE ) );
-	else
+	if( !disassem ){
+		// create main closure 
+		struct TValue globalenv;		// TODO: get the acutal global table
+		assert( main.sizeupvalues == 1 );
+		struct closure* cmain = closure_create( &main, NULL, &globalenv );
+	
+		execute( cmain, jfunc_addr( e, JF_PROLOGUE ) );
+	
+		// deref c closure do garbage collection
+
+	} else { 
 		serialise( &main, out, jitfuncs, sizemcode, &mips_mach, e, mips_ops.nr_jfuncs() );	
+	}
 
 	// cleanup
 	jfuncs_cleanup();
