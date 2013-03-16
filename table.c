@@ -34,6 +34,15 @@ table_t* table_create( int array, int hash ){
 }
 
 
+void table_setlist( struct table* t, void* src, int idx, int sz ){
+	for( int i = 0; i < sz; i++ ){
+	//	t->array[ idx + i ] = (char*)src + vreg_value_offset( i )
+		memcpy( &t->array[ idx + i ],
+			(char*)src + vreg_value_offset( i ),
+			sizeof( int ) );	// TODO: how do you know size? Need word size
+	}
+}
+
 void table_set( struct table* t, int idx, int type, int value ){
 	t->array[ idx - 1 ] = value;
 }
@@ -53,16 +62,7 @@ wordp ljc_tableget( wordp t, word idxt, word idxv, wordp type ){
 	Tag* tag = (Tag*)type;
 	struct TValue idx = { .t = idxt, .v.n = idxv };	
 	struct TValue v = table_get( (struct table*)t, idx );
-//	*tag = v.t;
+	*tag = v.t;
 	return v.v.n;
-}
-
-void table_setlist( struct table* t, void* src, int idx, int sz ){
-	for( int i = 0; i < sz; i++ ){
-	//	t->array[ idx + i ] = (char*)src + vreg_value_offset( i )
-		memcpy( &t->array[ idx + i ],
-			(char*)src + vreg_value_offset( i ),
-			sizeof( int ) );	// TODO: how do you know size? Need word size
-	}
 }
 

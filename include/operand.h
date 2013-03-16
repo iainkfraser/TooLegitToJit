@@ -20,6 +20,9 @@ typedef struct lvm_operand{	// lua VM operand
 
 loperand to_loperand( int rk );
 
+#define ISLO_LOCAL( l )		( (l).islocal )
+#define ISLO_CONST( l )		( !(l).islocal )
+
 
 /*
 * Generic machine operand

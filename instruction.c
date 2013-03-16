@@ -164,17 +164,21 @@ void emit_setlist( struct emitter** mce, struct machine_ops* mop, struct frame* 
 }
 
 void emit_gettable( struct emitter** mce, struct machine_ops* mop, struct frame* f, loperand dst, loperand table, loperand idx ){
+	assert( ISLO_LOCAL( dst ) );
 
-	// TODO: verify its a table and number
+	// TODO: verify its a table
 	operand t = loperand_to_operand( f, table ).value;
 	vreg_operand i = loperand_to_operand( f, idx );
 	operand d = loperand_to_operand( f, dst ).value;
-
-	// TODO: get return type by pointer arg
-	mop->call_static_cfn( REF, f, (uintptr_t)&ljc_tableget, &d, 3, t, i.type, i.value  );
-//	mop->call_static_cfn( REF, f, (uintptr_t)&table_get, &d, 2, t, i );
+	operand dt = llocal_to_stack_operand( f, dst.index ).type;
+	operand dtptr = OP_TARGETREG( acquire_temp( mop, REF, f->m ) );
 
 
+	address_of( mop, REF, f->m, dtptr, dt );		
+	mop->call_static_cfn( REF, f, (uintptr_t)&ljc_tableget, &d, 4, t,
+					i.type, i.value, dtptr   );
+	release_temp( mop, REF, f->m );
+	vreg_fill( mop, REF, f, dst.index );
 }
 
 void emit_closure( struct emitter** mce, struct machine_ops* mop, struct frame* f, loperand dst, struct proto* p ){

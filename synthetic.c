@@ -6,6 +6,7 @@
 #include <stdarg.h>
 #include "emitter.h"
 #include "machine.h"
+#include "frame.h"
 
 void assign( struct machine_ops* mop, struct emitter* e, struct machine* m, vreg_operand d, vreg_operand s ) {
 	mop->move( e, m, d.value, s.value );
@@ -55,6 +56,42 @@ void popn( struct machine_ops* mop, struct emitter* e, struct machine* m, int nr
 	va_end( ap );
 }
 
+
+void address_of( struct machine_ops *mop, struct emitter *e, struct machine *m,
+							operand d,
+							operand s ){
+	assert( ISO_DADDR( s ) );
+	mop->add( e, m, d, OP_TARGETREG( s.base ), 
+			OP_TARGETIMMED( s.offset ) );
+}
+
+void vreg_fill( struct machine_ops *mop, struct emitter *e, struct frame *f,
+							int vreg ){
+	vreg_operand on = vreg_to_operand( f, vreg, false );
+	vreg_operand off = vreg_to_operand( f, vreg, true );
+
+	if( ISO_REG( on.value ) )
+		mop->move( e, f->m, on.value, off.value );
+
+	if( ISO_REG( off.type ) )
+		mop->move( e, f->m, on.type, off.type );
+}
+
+void vreg_spill( struct machine_ops *mop, struct emitter *e, struct frame *f,
+							int vreg ){
+	vreg_operand on = vreg_to_operand( f, vreg, false );
+	vreg_operand off = vreg_to_operand( f, vreg, true );
+
+	if( ISO_REG( on.value ) )
+		mop->move( e, f->m, off.value, on.value );
+
+	if( ISO_REG( off.type ) )
+		mop->move( e, f->m, off.type, on.type );
+}
+
+/*
+* Code that predated JFuncs. Can probably be removed now.
+*/
 
 // this function could be inline
 void syn_memcpyw( struct machine_ops* mop, struct emitter* e, struct machine* m, operand d, operand s, operand size ){

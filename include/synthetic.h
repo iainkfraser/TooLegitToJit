@@ -14,6 +14,17 @@ void loadim( struct machine_ops* mop, struct emitter* e, struct machine* m, int 
 void pushn( struct machine_ops* mop, struct emitter* e, struct machine* m, int nr_operands, ... );
 void popn( struct machine_ops* mop, struct emitter* e, struct machine* m, int nr_operands, ... );
 
+void address_of( struct machine_ops *mop, struct emitter *e, struct machine *m,
+							operand d,
+							operand s );
+void vreg_fill( struct machine_ops *mop, struct emitter *e, struct frame *f,
+							int vreg );
+void vreg_spill( struct machine_ops *mop, struct emitter *e, struct frame *f,
+							int vreg );
+
+/*
+* Predates JFunctions
+*/
 void syn_memcpyw( struct machine_ops* mop, struct emitter* e, struct machine* m, operand d, operand s, operand size );
 void syn_memsetw( struct machine_ops* mop, struct emitter* e, struct machine* m, operand d, operand v, operand size );
 void syn_min( struct machine_ops* mop, struct emitter* e, struct machine *m, operand d, operand s, operand t );
