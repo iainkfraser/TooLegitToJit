@@ -50,7 +50,11 @@ void closure_close( struct TValue* stackbase ){
 		if( uv->val > stackbase )
 			break; 
 
+		// migrate
 		list_del( seek ); 
+		uv->v = *uv->val;
+		uv->val = &uv->v;
+
 		// TODO: call garbage collect? 
 	}  
 }
