@@ -182,8 +182,11 @@ void emit_closure( struct emitter** mce, struct machine_ops* mop, struct frame* 
 	operand pproto = OP_TARGETIMMED( (uintptr_t)p );
 	operand parentc = get_frame_closure( f );  
 	operand stackbase = vreg_to_operand( f, 0, true ).type;
-	 
-	mop->call_static_cfn( REF, f, (uintptr_t)&closure_create, &d, 3, pproto, parentc, stackbase );
+
+	operand sb = OP_TARGETREG( acquire_temp( mop, REF, f->m ) );
+	mop->add( REF, f->m, sb, OP_TARGETREG( stackbase.base ), OP_TARGETIMMED( stackbase.offset ) );
+	mop->call_static_cfn( REF, f, (uintptr_t)&closure_create, &d, 3, pproto, parentc, sb );
+	release_temp( mop, REF, f->m );
 }
 
 
@@ -215,5 +218,22 @@ void emit_ret( struct emitter** mce, struct machine_ops* mop, struct frame* f, l
 // 	mop->b( REF, f->m, LBL_EC( f->epi ) ); 
 } 
 
+void emit_getupval( struct emitter** mce, struct machine_ops* mop, struct frame* f, loperand dst, int uvidx ){
+	operand closure =  get_frame_closure( f );
+	operand closeptr = OP_TARGETREG( acquire_temp( mop, REF, f->m ) );
+	vreg_operand d = loperand_to_operand( f, dst );
 
+	const int uvptr_src = offsetof( struct closure, uvs ) + sizeof( struct UpVal* ) * uvidx;
+	const int tval_src = offsetof( struct UpVal, val );
+
+	// deref closure**, then get upval pointer  
+	mop->move( REF, f->m, closeptr, closure ); 
+	mop->move( REF, f->m, closeptr, OP_TARGETDADDR( closeptr.reg, 0 ) );
+	mop->move( REF, f->m, closeptr, OP_TARGETDADDR( closeptr.reg, uvptr_src ) );
+	mop->move( REF, f->m, closeptr, OP_TARGETDADDR( closeptr.reg, tval_src ) ); 
+	mop->move( REF, f->m, d.value, OP_TARGETDADDR( closeptr.reg, offsetof( struct TValue, v ) ) );
+	mop->move( REF, f->m, d.type, OP_TARGETDADDR( closeptr.reg, offsetof( struct TValue, t ) ) ); 
+
+	release_temp( mop, REF, f->m );
+}
 

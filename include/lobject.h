@@ -21,7 +21,7 @@ union Value {
 };
 
 struct TValue {
-	word w;		// compile will word align might as well make it explcit	
+	word t;		// compile will word align might as well make it explcit	
 	union Value v;
 };	// tagged value
 

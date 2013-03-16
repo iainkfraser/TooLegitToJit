@@ -32,4 +32,6 @@ void emit_closure( struct emitter** mce, struct machine_ops* mop, struct frame* 
 void emit_call( struct emitter** mce, struct machine_ops* mop, struct frame* f, loperand closure, int nr_params, int nr_results );
 void emit_ret( struct emitter** mce, struct machine_ops* mop, struct frame* f, loperand base, int nr_results );
 
+void emit_getupval( struct emitter** mce, struct machine_ops* mop, struct frame* f, loperand dst, int uvidx );
+
 #endif 
