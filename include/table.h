@@ -10,15 +10,17 @@
 struct table;
 
 struct table* table_create( int array, int hash );
-void table_set( struct table* t, int idx, int type, int value );
 void table_setlist( struct table* t, void* src, int idx, int sz );
 
+
+void table_set( struct table* t, struct TValue idx, struct TValue v );
 struct TValue table_get( struct table* t, struct TValue idx );
 
 /*
-* Lua jitter callee funcs
+* Lua jitter callee funcs.
 */
 
 wordp ljc_tableget( wordp t, word idxt, word idxv, wordp type );
+void ljc_tableset( wordp t, word idxt, word idxv, word valt, word valv );
 
 #endif

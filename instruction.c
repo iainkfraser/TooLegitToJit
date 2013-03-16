@@ -240,7 +240,21 @@ static void do_gettable( struct emitter** mce, struct machine_ops* mop,
 	release_temp( mop, REF, f->m );
 	vreg_fill( mop, REF, f, dvreg );
 }
-						 
+
+static void do_settable( struct emitter** mce, struct machine_ops* mop,
+						struct frame* f,
+						operand table,
+						vreg_operand idx,
+						vreg_operand v ){
+	mop->call_static_cfn( REF, f, (uintptr_t)&ljc_tableset, NULL
+								, 5 
+								, table
+								, idx.type 
+								, idx.value
+								, v.type 
+								, v.value );
+}
+					 
 
 void emit_gettable( struct emitter** mce, struct machine_ops* mop, 
 						struct frame* f, 
@@ -283,10 +297,12 @@ void emit_gettableup( struct emitter** mce, struct machine_ops* mop,
 void emit_settableup( struct emitter** mce, struct machine_ops* mop, 
 				struct frame* f, int uvidx, loperand tidx,
 				loperand value ){
-	operand dval = OP_TARGETREG( acquire_temp( mop, REF, f->m ) );
 	operand dtype = OP_TARGETREG( acquire_temp( mop, REF, f->m ) );
+	operand dval = OP_TARGETREG( acquire_temp( mop, REF, f->m ) );
 	do_gettableup( mce, mop, f, dval, dtype, uvidx );
-	// TODO: set the value	
-	release_tempn( mop, REF, f->m, 2 );
+	release_temp( mop, REF, f->m );
+	do_settable( mce, mop, f, dval, loperand_to_operand( f, tidx )
+					, loperand_to_operand( f, value  ) );
+	release_temp( mop, REF, f->m );
 }
 

@@ -43,8 +43,8 @@ void table_setlist( struct table* t, void* src, int idx, int sz ){
 	}
 }
 
-void table_set( struct table* t, int idx, int type, int value ){
-	t->array[ idx - 1 ] = value;
+void table_set( struct table* t, struct TValue idx, struct TValue v ){
+	t->array[ idx.v.n ] = v.v.n;
 }
 
 struct TValue table_get( struct table* t, struct TValue idx ){
@@ -64,5 +64,11 @@ wordp ljc_tableget( wordp t, word idxt, word idxv, wordp type ){
 	struct TValue v = table_get( (struct table*)t, idx );
 	*tag = v.t;
 	return v.v.n;
+}
+
+void ljc_tableset( wordp t, word idxt, word idxv, word valt, word valv ){
+	struct TValue idx = { .t = idxt, .v.n = idxv };	
+	struct TValue v = { .t = valt, .v.n = valv };
+	table_set( ( struct table*)t, idx, v );
 }
 
