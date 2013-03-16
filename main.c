@@ -28,6 +28,7 @@
 #include "elf.h"
 #include "lstate.h"
 #include "func.h"
+#include "table.h"
 
 struct code_alloc {
 	void* ( *alloc )( size_t );
@@ -502,9 +503,12 @@ int main( int argc, char* argv[] ){
 
 
 	if( !disassem ){
-		// create main closure 
-		struct TValue globalenv;		// TODO: get the acutal global table
 		assert( main.sizeupvalues == 1 );
+		
+		// create main closure 
+		struct TValue globalenv = { .t = LUA_TTABLE };	
+		globalenv.v.t = table_create( 0, 0 ); 
+		
 		struct closure* cmain = closure_create( &main, NULL, &globalenv );
 	
 		execute( cmain, jfunc_addr( e, JF_PROLOGUE ) );

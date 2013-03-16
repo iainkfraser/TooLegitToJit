@@ -11,6 +11,8 @@
 #include "list.h"
 #include "macros.h"
 
+struct table;
+
 typedef uint32_t word;
 typedef uintptr_t wordp;
 typedef word lua_Number;
@@ -20,6 +22,7 @@ union Value {
 	// garbage collectable object
 	bool		b;
 	lua_Number	n;
+	struct table*	t;
 	// light userdata
 	// light C function
 };

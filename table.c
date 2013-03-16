@@ -12,24 +12,26 @@
 #include "frame.h"
 #include "lopcodes.h"
 #include "lobject.h"
+#include "dictionary.h"
 
 #define THROW( e )	do{}while(0)	
 
 
 typedef struct table {
-	int 	ref;
-	void*	hash;
-	int	array[];
+	// TODO: garbage collect data  
+	size_t asz;		// array size	
+	struct dictionary *d;
+	struct TValue array[];
 } table_t; 
 
 table_t* table_create( int array, int hash ){
-	size_t sz = sizeof( table_t ) + sizeof( int ) * array;
+	size_t sz = sizeof( table_t ) + sizeof( struct TValue ) * array;
 	table_t* t = malloc( sizeof( sz ) );
 	if( !t )
 		THROW( ENOMEM );
-	t->ref = 0;
-	printf("create table %p\n", t );
 
+	t->asz = array;
+	t->d = dictionary_create( hash );
 	return t;
 }
 
@@ -46,7 +48,7 @@ void table_setlist( struct table* t, void* src, int idx, int sz ){
 void table_set( struct table* t, struct TValue idx, struct TValue v ){
 	if( idx.t == LUA_TSTRING )
 		return;
-	t->array[ idx.v.n ] = v.v.n;
+	t->array[ idx.v.n ] = v;
 }
 
 struct TValue table_get( struct table* t, struct TValue idx ){
@@ -56,8 +58,8 @@ struct TValue table_get( struct table* t, struct TValue idx ){
 	}
 
 	struct TValue ret;
-	ret.v.n = t->array[ idx.v.n - 1 ];
-	ret.t = LUA_TNUMBER;
+	ret = t->array[ idx.v.n - 1 ];
+//	ret.t = LUA_TNUMBER;
 	return ret;
 }
 
