@@ -34,4 +34,10 @@ void emit_ret( struct emitter** mce, struct machine_ops* mop, struct frame* f, l
 
 void emit_getupval( struct emitter** mce, struct machine_ops* mop, struct frame* f, loperand dst, int uvidx );
 
+void emit_gettableup( struct emitter** mce, struct machine_ops* mop, 
+				struct frame* f, loperand dst, int uvidx,
+				loperand tidx );
+void emit_settableup( struct emitter** mce, struct machine_ops* mop, 
+				struct frame* f, int uvidx, loperand tidx,
+				loperand value );
 #endif 

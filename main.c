@@ -310,6 +310,18 @@ int load_code( FILE* f, struct proto* p, struct code_alloc* ca, struct machine* 
 			case OP_GETUPVAL:
 				emit_getupval( &mce, mop, &fr, to_loperand( A ), GETARG_B( ins ) );
 				break;
+			case OP_SETTABUP:
+				emit_settableup( &mce, mop, &fr, 
+					GETARG_B( A ),
+					to_loperand( GETARG_B( ins ) ),
+					to_loperand( GETARG_C( ins ) ) );
+				break;
+			case OP_GETTABUP:
+				emit_gettableup( &mce, mop, &fr, 
+					to_loperand( A ),
+					GETARG_B( ins ), 
+					to_loperand( GETARG_C( ins ) ) );
+				break;
 			default:
 				printf("%d\n", GET_OPCODE( ins ) );
 				assert( 0 );

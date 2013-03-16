@@ -6,11 +6,15 @@
 #ifndef _LOBJECT_H_
 #define _LOBJECT_H_
 
+#include <stdint.h>
 #include <stdbool.h>
 #include "list.h"
+#include "macros.h"
 
 typedef uint32_t word;
+typedef uintptr_t wordp;
 typedef word lua_Number;
+typedef word Tag;
 
 union Value {
 	// garbage collectable object
@@ -20,8 +24,11 @@ union Value {
 	// light C function
 };
 
+gl_static_assert( sizeof( union Value ) == sizeof( word ) );
+gl_static_assert( sizeof( wordp ) == sizeof( word ) );
+
 struct TValue {
-	word t;		// compile will word align might as well make it explcit	
+	Tag t;		// compile will word align might as well make it explcit	
 	union Value v;
 };	// tagged value
 

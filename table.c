@@ -8,7 +8,10 @@
 #include <stdio.h>
 #include <stddef.h>
 #include <errno.h>
+#include "table.h"
 #include "frame.h"
+#include "lopcodes.h"
+#include "lobject.h"
 
 #define THROW( e )	do{}while(0)	
 
@@ -35,8 +38,23 @@ void table_set( struct table* t, int idx, int type, int value ){
 	t->array[ idx - 1 ] = value;
 }
 
-int table_get( struct table* t, int idx, int* type ){
-	return t->array[ idx-1 ];
+struct TValue table_get( struct table* t, struct TValue idx ){
+	struct TValue ret;
+	ret.v.n = t->array[ idx.v.n - 1 ];
+	ret.t = LUA_TNUMBER;
+	return ret;
+}
+
+/*
+* Lua jit callee functions ( args and return must be word/wordp ).
+*/
+
+wordp ljc_tableget( wordp t, word idxt, word idxv, wordp type ){
+	Tag* tag = (Tag*)type;
+	struct TValue idx = { .t = idxt, .v.n = idxv };	
+	struct TValue v = table_get( (struct table*)t, idx );
+//	*tag = v.t;
+	return v.v.n;
 }
 
 void table_setlist( struct table* t, void* src, int idx, int sz ){

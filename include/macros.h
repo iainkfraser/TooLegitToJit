@@ -28,5 +28,15 @@
 
 #define safe_free( x )	do{ if( (x) ) free( (x) ); } while( 0 )
 
+#define static_assert(x)        do{switch(0){case false: case x:;}}while(0)
+
+/*
+* Credit to Pádraig Brady, the below macros have his copyright. 
+*/
+#define ASSERT_CONCAT_(a, b) a##b
+#define ASSERT_CONCAT(a, b) ASSERT_CONCAT_(a, b)
+#define gl_static_assert(e)	enum { ASSERT_CONCAT(assert_line_, __LINE__) = 1/(!!(e)) } 
+
+
 #endif
 

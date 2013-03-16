@@ -167,12 +167,11 @@ void emit_gettable( struct emitter** mce, struct machine_ops* mop, struct frame*
 
 	// TODO: verify its a table and number
 	operand t = loperand_to_operand( f, table ).value;
-	vreg_operand i = loperand_to_operand( f, idx );
+	operand i = loperand_to_operand( f, idx ).value;
 	operand d = loperand_to_operand( f, dst ).value;
 
 	// TODO: get return type by pointer arg
-	mop->call_static_cfn( REF, f, (uintptr_t)&ljc_tableget, &d, 3, t, i.type, i.value  );
-//	mop->call_static_cfn( REF, f, (uintptr_t)&table_get, &d, 2, t, i );
+	mop->call_static_cfn( REF, f, (uintptr_t)&table_get, &d, 2, t, i );
 
 
 }
@@ -220,6 +219,8 @@ static void do_getupval( struct emitter** mce, struct machine_ops* mop,
 					int uvidx ){
 	operand closure =  get_frame_closure( f );
 	operand closeptr = OP_TARGETREG( acquire_temp( mop, REF, f->m ) );
+//	vreg_operand d = loperand_to_operand( f, dst );
+
 	const int uvptr_src = offsetof( struct closure, uvs ) + sizeof( struct UpVal* ) * uvidx;
 	const int tval_src = offsetof( struct UpVal, val );
 
@@ -228,45 +229,41 @@ static void do_getupval( struct emitter** mce, struct machine_ops* mop,
 	mop->move( REF, f->m, closeptr, OP_TARGETDADDR( closeptr.reg, 0 ) );
 	mop->move( REF, f->m, closeptr, OP_TARGETDADDR( closeptr.reg, uvptr_src ) );
 	mop->move( REF, f->m, closeptr, OP_TARGETDADDR( closeptr.reg, tval_src ) ); 
-	mop->move( REF, f->m, dval, OP_TARGETDADDR( closeptr.reg, offsetof( struct TValue, v ) ) );
-	mop->move( REF, f->m, dtype, OP_TARGETDADDR( closeptr.reg, offsetof( struct TValue, t ) ) ); 
+	mop->move( REF, f->m, d.value, OP_TARGETDADDR( closeptr.reg, offsetof( struct TValue, v ) ) );
+	mop->move( REF, f->m, d.type, OP_TARGETDADDR( closeptr.reg, offsetof( struct TValue, t ) ) ); 
 
 	release_temp( mop, REF, f->m );
 }
 
 void emit_getupval( struct emitter** mce, struct machine_ops* mop, struct frame* f, loperand dst, int uvidx ){
+	operand closure =  get_frame_closure( f );
+	operand closeptr = OP_TARGETREG( acquire_temp( mop, REF, f->m ) );
 	vreg_operand d = loperand_to_operand( f, dst );
-	do_getupval( mce, mop, f, d.value, d.type, uvidx );
+
+	const int uvptr_src = offsetof( struct closure, uvs ) + sizeof( struct UpVal* ) * uvidx;
+	const int tval_src = offsetof( struct UpVal, val );
+
+	// deref closure**, then get upval pointer  
+	mop->move( REF, f->m, closeptr, closure ); 
+	mop->move( REF, f->m, closeptr, OP_TARGETDADDR( closeptr.reg, 0 ) );
+	mop->move( REF, f->m, closeptr, OP_TARGETDADDR( closeptr.reg, uvptr_src ) );
+	mop->move( REF, f->m, closeptr, OP_TARGETDADDR( closeptr.reg, tval_src ) ); 
+	mop->move( REF, f->m, d.value, OP_TARGETDADDR( closeptr.reg, offsetof( struct TValue, v ) ) );
+	mop->move( REF, f->m, d.type, OP_TARGETDADDR( closeptr.reg, offsetof( struct TValue, t ) ) ); 
+
+	release_temp( mop, REF, f->m );
 }
 
-
-/* just table upvalue and verify its a table */
-static void do_gettableup( struct emitter** mce, struct machine_ops* mop,
-						struct frame* f, 
-						operand dval,
-						operand dtype,
-						int uvidx ){
-	do_getupval( mce, mop, f, dval, dtype, uvidx );
-	// TODO: verify that dtype is table
-}
 
 void emit_gettableup( struct emitter** mce, struct machine_ops* mop, 
 				struct frame* f, loperand dst, int uvidx,
 				loperand tidx ){
-	vreg_operand d = loperand_to_operand( f, dst );
-	do_gettableup( mce, mop, f, d.value, d.type, uvidx );
-
-	// TODO: get return type by pointer arg
-//	mop->call_static_cfn( REF, f, (uintptr_t)&table_get, &d, 2, d, i );
+	emit_getupval( mce, mop, f, dstm uvidx );
 }
 
 void emit_settableup( struct emitter** mce, struct machine_ops* mop, 
 				struct frame* f, int uvidx, loperand tidx,
 				loperand value ){
-	operand dval = OP_TARGETREG( acquire_temp( mop, REF, f->m ) );
-	operand dtype = OP_TARGETREG( acquire_temp( mop, REF, f->m ) );
-	do_gettableup( mce, mop, f, dval, dtype, uvidx );
-	// TODO: set the value	
-	release_tempn( mop, REF, f->m, 2 );
+
 }
 
