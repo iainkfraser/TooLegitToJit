@@ -163,24 +163,6 @@ void emit_setlist( struct emitter** mce, struct machine_ops* mop, struct frame* 
 
 }
 
-void emit_gettable( struct emitter** mce, struct machine_ops* mop, struct frame* f, loperand dst, loperand table, loperand idx ){
-	assert( ISLO_LOCAL( dst ) );
-
-	// TODO: verify its a table
-	operand t = loperand_to_operand( f, table ).value;
-	vreg_operand i = loperand_to_operand( f, idx );
-	operand d = loperand_to_operand( f, dst ).value;
-	operand dt = llocal_to_stack_operand( f, dst.index ).type;
-	operand dtptr = OP_TARGETREG( acquire_temp( mop, REF, f->m ) );
-
-
-	address_of( mop, REF, f->m, dtptr, dt );		
-	mop->call_static_cfn( REF, f, (uintptr_t)&ljc_tableget, &d, 4, t,
-					i.type, i.value, dtptr   );
-	release_temp( mop, REF, f->m );
-	vreg_fill( mop, REF, f, dst.index );
-}
-
 void emit_closure( struct emitter** mce, struct machine_ops* mop, struct frame* f, loperand dst, struct proto* p ){
 	// TODO: set type of dst to closure 
 	operand d = loperand_to_operand( f, dst ).value;
@@ -238,19 +220,54 @@ static void do_getupval( struct emitter** mce, struct machine_ops* mop,
 	release_temp( mop, REF, f->m );
 }
 
+static void do_gettable( struct emitter** mce, struct machine_ops* mop, 
+						struct frame* f,
+						int dvreg,
+						operand table,
+						vreg_operand idx ){
+	
+	vreg_operand dston = vreg_to_operand( f, dvreg, false ); 
+	vreg_operand dstoff = vreg_to_operand( f, dvreg, true );
+	operand dtptr = OP_TARGETREG( acquire_temp( mop, REF, f->m ) );
+	
+	address_of( mop, REF, f->m, dtptr, dstoff.type );		
+	mop->call_static_cfn( REF, f, (uintptr_t)&ljc_tableget, &dston.value
+								, 4
+								, table
+								, idx.type 
+								, idx.value
+								, dtptr );
+	release_temp( mop, REF, f->m );
+	vreg_fill( mop, REF, f, dvreg );
+}
+						 
+
+void emit_gettable( struct emitter** mce, struct machine_ops* mop, 
+						struct frame* f, 
+						loperand dst, loperand table, 
+						loperand idx ){
+	assert( ISLO_LOCAL( dst ) );
+
+	// TODO: verify its a table
+	vreg_operand t = loperand_to_operand( f, table );
+
+	do_gettable( mce, mop, f, dst.index, t.value
+					, loperand_to_operand( f, idx ) );
+}
+
 void emit_getupval( struct emitter** mce, struct machine_ops* mop, struct frame* f, loperand dst, int uvidx ){
 	vreg_operand d = loperand_to_operand( f, dst );
 	do_getupval( mce, mop, f, d.value, d.type, uvidx );
 }
 
 
-/* just table upvalue and verify its a table */
+/* get table upvalue (assign to dv/dt) and verify its a table */
 static void do_gettableup( struct emitter** mce, struct machine_ops* mop,
 						struct frame* f, 
-						operand dval,
-						operand dtype,
+						operand dvalue,
+						operand dtype,	
 						int uvidx ){
-	do_getupval( mce, mop, f, dval, dtype, uvidx );
+	do_getupval( mce, mop, f, dvalue, dtype, uvidx );
 	// TODO: verify that dtype is table
 }
 
@@ -259,9 +276,8 @@ void emit_gettableup( struct emitter** mce, struct machine_ops* mop,
 				loperand tidx ){
 	vreg_operand d = loperand_to_operand( f, dst );
 	do_gettableup( mce, mop, f, d.value, d.type, uvidx );
-
-	// TODO: get return type by pointer arg
-//	mop->call_static_cfn( REF, f, (uintptr_t)&table_get, &d, 2, d, i );
+	do_gettable( mce, mop, f, dst.index, d.value
+				, loperand_to_operand( f, tidx ) );
 }
 
 void emit_settableup( struct emitter** mce, struct machine_ops* mop, 
