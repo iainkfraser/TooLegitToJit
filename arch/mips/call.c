@@ -191,7 +191,7 @@ void mips_static_ccall( struct emitter* me, struct frame* f, uintptr_t fn, const
 	assert( !has_spill( f->m ) );	// this fn call will clobber the crap out spilled regs
 
 	const bool require_tspill = is_any_temps( f );
-	const int sz_arg_struct = 4 * min( 4, argsz );
+	const int sz_arg_struct = 4 * max( 4, argsz );
 	va_list ap;
 	va_start( ap, argsz );
 
@@ -205,8 +205,27 @@ void mips_static_ccall( struct emitter* me, struct frame* f, uintptr_t fn, const
 
 	va_end( ap );
 
+	// grab all the temps we are going to use before doing anything. Or clobberville
+	int counter = 0;
+	while( temps_accessed( f->m ) < min( args_by_reg, argsz ) ){
+		acquire_temp( _MOP, me, f->m );
+		counter++;
+	} 
+
+	// spill MIPS temps
+	if( require_tspill )
+		jfunc_call( _MOP, me, f->m, jf_arch_idx( MJF_STORETEMP ), 
+			mjf_storetemp_offset( f->m, f->nr_locals ), JFUNC_UNLIMITED_STACK, 0 );
+
+
+	const operand sp = OP_TARGETREG( f->m->sp );
+	const operand ds = OP_TARGETIMMED( sz_arg_struct );
+
+	// update stack 	
+	_MOP->sub( me, f->m, sp, sp, ds );
+
 	// store all stack based args first, becase we may clobber src temps later.
-	operand dst = OP_TARGETDADDR( f->m->sp, -sz_arg_struct + 16 );
+	operand dst = OP_TARGETDADDR( f->m->sp, 16 );
 	for( int i = args_by_reg; i < argsz; i++, dst.offset += 4 ){
 		_MOP->move( me, f->m, dst, args[i] );	
 	}
@@ -219,20 +238,16 @@ void mips_static_ccall( struct emitter* me, struct frame* f, uintptr_t fn, const
 			
 	}
 
-	int counter = 0;
-	while( temps_accessed( f->m ) < min( args_by_reg, argsz ) ){
-		acquire_temp( _MOP, me, f->m );
-		counter++;
-	} 
 
 	/*
-	*	TODO: 
 	* Catch 22:
 	*	if( store stack args first )
 	*		assign_arg_regs may clobber the stack w
 	*
 	*	if( store stack args after )
 	*		any stack args that had a arg reg as a src maybe be clobbered.
+	* Fixed bug subing the stack first, so any stack spills will be into the new
+	* frame.
 	*/
 	assign_arg_regs( me, f, args_by_reg, dep_graph );
 
@@ -241,20 +256,6 @@ void mips_static_ccall( struct emitter* me, struct frame* f, uintptr_t fn, const
 		if( !( ISO_REG( args[i] ) && MIPSREG_ISARG( args[i].reg ) ) )
 			_MOP->move( me, f->m, OP_TARGETREG( _a0 + i ), args[i] );
 	} 
-
-	// spill MIPS temps
-	if( require_tspill )
-		jfunc_call( _MOP, me, f->m, jf_arch_idx( MJF_STORETEMP ), 
-			mjf_storetemp_offset( f->m, f->nr_locals ), JFUNC_UNLIMITED_STACK, 0 );
-
-
-
-	const operand sp = OP_TARGETREG( f->m->sp );
-	const operand ds = OP_TARGETIMMED( sz_arg_struct );
-
-	// update stack and call	
-	_MOP->sub( me, f->m, sp, sp, ds );
-
 
 	/*
 	* If the destination address has to be loaded into a temp register
