@@ -21,6 +21,9 @@ void vreg_fill( struct machine_ops *mop, struct emitter *e, struct frame *f,
 							int vreg );
 void vreg_spill( struct machine_ops *mop, struct emitter *e, struct frame *f,
 							int vreg );
+void vreg_type_fill( struct machine_ops *mop, struct emitter *e
+					, struct frame * f
+					, int vreg );
 
 /*
 * Predates JFunctions

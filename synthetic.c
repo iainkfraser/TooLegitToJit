@@ -73,7 +73,17 @@ void vreg_fill( struct machine_ops *mop, struct emitter *e, struct frame *f,
 	if( ISO_REG( on.value ) )
 		mop->move( e, f->m, on.value, off.value );
 
-	if( ISO_REG( off.type ) )
+	if( ISO_REG( on.type ) )
+		mop->move( e, f->m, on.type, off.type );
+}
+
+void vreg_type_fill( struct machine_ops *mop, struct emitter *e
+					, struct frame * f
+					, int vreg ){
+	vreg_operand on = vreg_to_operand( f, vreg, false );
+	vreg_operand off = vreg_to_operand( f, vreg, true );
+
+	if( ISO_REG( on.type ) )
 		mop->move( e, f->m, on.type, off.type );
 }
 
@@ -85,7 +95,7 @@ void vreg_spill( struct machine_ops *mop, struct emitter *e, struct frame *f,
 	if( ISO_REG( on.value ) )
 		mop->move( e, f->m, off.value, on.value );
 
-	if( ISO_REG( off.type ) )
+	if( ISO_REG( on.type ) )
 		mop->move( e, f->m, off.type, on.type );
 }
 

@@ -238,7 +238,7 @@ static void do_gettable( struct emitter** mce, struct machine_ops* mop,
 								, idx.value
 								, dtptr );
 	release_temp( mop, REF, f->m );
-	vreg_fill( mop, REF, f, dvreg );
+	vreg_type_fill( mop, REF, f, dvreg );
 }
 
 static void do_settable( struct emitter** mce, struct machine_ops* mop,

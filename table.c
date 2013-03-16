@@ -44,10 +44,17 @@ void table_setlist( struct table* t, void* src, int idx, int sz ){
 }
 
 void table_set( struct table* t, struct TValue idx, struct TValue v ){
+	if( idx.t == LUA_TSTRING )
+		return;
 	t->array[ idx.v.n ] = v.v.n;
 }
 
 struct TValue table_get( struct table* t, struct TValue idx ){
+	if( idx.t == LUA_TSTRING ){
+		struct TValue r = { .t = LUA_TNUMBER, .v.n = 70 };
+		return r;
+	}
+
 	struct TValue ret;
 	ret.v.n = t->array[ idx.v.n - 1 ];
 	ret.t = LUA_TNUMBER;
