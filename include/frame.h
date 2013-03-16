@@ -21,7 +21,7 @@ typedef struct frame {
 	size_t			epi;	// epilogue location
 	size_t			pro;	// prologue location
 
-	operand*		consts;		
+	vreg_operand*		consts;		
 } frame;
 
 // TODO: create macro for variable length generation ( flexible array member ) and dynamic 
@@ -33,6 +33,7 @@ int code_start( struct frame* f );
 // set constants
 void init_consts( struct frame* f, int n );
 void setk_number( struct frame* f, int k, int value );
+void setk_string( struct frame* f, int k, char* str );
 
 // function emission ( includes prologue, epilogue, constant loading and data section )
 void emit_header( struct machine_ops* mop, struct emitter* e, struct frame* f );	// only call after all consts have been set

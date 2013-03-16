@@ -13,15 +13,19 @@
 #include "lobject.h"
 
 void init_consts( struct frame* f, int n ){
-	f->consts = malloc( sizeof( operand ) * n );
+	f->consts = malloc( sizeof( vreg_operand ) * n );
 	// TODO: error handling 
 }
 
-void setk_number( struct frame* f, int k, int value ) {
-	f->consts[ k ].tag = OT_IMMED;
-	f->consts[ k ].k = value;
+void setk_number( struct frame* f, int k, int value ){
+	f->consts[k].value = OP_TARGETIMMED( value );
+	f->consts[k].type = OP_TARGETIMMED( LUA_TNUMBER );
 }
 
+void setk_string( struct frame* f, int k, char* str ){
+	f->consts[k].value = OP_TARGETIMMED( (uintptr_t)str );
+	f->consts[k].type = OP_TARGETIMMED( LUA_TSTRING );
+}
 
 void emit_header( struct machine_ops* mop, struct emitter* e, struct frame* f ){
 	// write data section for strings
@@ -107,10 +111,7 @@ vreg_operand vreg_to_operand( struct frame* f, int vreg, bool stackonly ){
 }
 
 vreg_operand const_to_operand( struct frame* f, int k ){
-	vreg_operand o;
-	o.value = f->consts[ k ];
-	o.type = OP_TARGETIMMED( LUA_TNUMBER );
-	return o;
+	return f->consts[k];
 }
 
 int code_start( struct frame* f ){

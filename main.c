@@ -127,6 +127,18 @@ int load_constants( FILE* f, struct proto* p, struct emitter** mce, struct frame
 				fread( &k, sizeof( int ), 1, f );	
 				setk_number( fr, i, k );
 				break;	
+			case LUA_TSTRING:
+				{	// TODO: internalise strings & garbage collect
+					size_t sz;
+					char* str = NULL;
+					fread( &sz, sizeof( size_t ), 1, f );
+					if( sz ){
+						str = malloc( sz );
+						fread( str, sizeof( char ), sz, f );
+					}
+					
+					setk_string( fr, i, str );
+				} break;
 			default:
 				assert( 0 );
 		}
