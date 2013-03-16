@@ -48,6 +48,11 @@ static inline void call_epilogue( struct emitter* me, struct machine* m ){
 }
 
 
+static bool is_safe_direct_call( struct emitter* me, struct machine* m, label l ){
+	uintptr_t pc = me->ops->absc( me );
+	return BITFIELD_DECODE( 28, 4, l.abs.k ) == BITFIELD_DECODE( 28, 4, pc );
+}
+
 static void safe_direct_call( struct emitter* me, struct machine* m, label l ){
 	assert( ISL_ABSDIRECT( l ) );
 	
@@ -186,6 +191,7 @@ void mips_static_ccall( struct emitter* me, struct frame* f, uintptr_t fn, const
 	assert( !has_spill( f->m ) );	// this fn call will clobber the crap out spilled regs
 
 	const bool require_tspill = is_any_temps( f );
+	const int sz_arg_struct = 4 * min( 4, argsz );
 	va_list ap;
 	va_start( ap, argsz );
 
@@ -200,8 +206,8 @@ void mips_static_ccall( struct emitter* me, struct frame* f, uintptr_t fn, const
 	va_end( ap );
 
 	// store all stack based args first, becase we may clobber src temps later.
-	operand dst = OP_TARGETDADDR( f->m->sp, -4 );
-	for( int i = args_by_reg; i < argsz; i++, dst.offset -= 4 ){
+	operand dst = OP_TARGETDADDR( f->m->sp, -sz_arg_struct + 16 );
+	for( int i = args_by_reg; i < argsz; i++, dst.offset += 4 ){
 		_MOP->move( me, f->m, dst, args[i] );	
 	}
 
@@ -219,7 +225,15 @@ void mips_static_ccall( struct emitter* me, struct frame* f, uintptr_t fn, const
 		counter++;
 	} 
 
-	// move to correct arg registers - TODO: can clobber stack, there need to update stack before this??  
+	/*
+	*	TODO: 
+	* Catch 22:
+	*	if( store stack args first )
+	*		assign_arg_regs may clobber the stack w
+	*
+	*	if( store stack args after )
+	*		any stack args that had a arg reg as a src maybe be clobbered.
+	*/
 	assign_arg_regs( me, f, args_by_reg, dep_graph );
 
 	// now depedency conflicts have been resolved load nonreg dependecies
@@ -233,11 +247,29 @@ void mips_static_ccall( struct emitter* me, struct frame* f, uintptr_t fn, const
 		jfunc_call( _MOP, me, f->m, jf_arch_idx( MJF_STORETEMP ), 
 			mjf_storetemp_offset( f->m, f->nr_locals ), JFUNC_UNLIMITED_STACK, 0 );
 
+
+
 	const operand sp = OP_TARGETREG( f->m->sp );
-	const operand ds = OP_TARGETIMMED( 4 * min( 4, argsz ) );
+	const operand ds = OP_TARGETIMMED( sz_arg_struct );
+
 	// update stack and call	
 	_MOP->sub( me, f->m, sp, sp, ds );
-	_MOP->call( me, f->m, LBL_ABS( OP_TARGETIMMED( fn ) ) );	// TODO: do explcit call so that put sub into delay slot	
+
+
+	/*
+	* If the destination address has to be loaded into a temp register
+	* this may require a reg spill, that would clobber stack passed args.
+	* However we know after this point that any temp regs can be clobbered.
+	* So use that as jump location.
+	*/
+	label l = LBL_ABS( OP_TARGETIMMED( fn ) );
+	if( !is_safe_direct_call( me, f->m, l ) ){
+		operand target = OP_TARGETREG( _t0 );
+		_MOP->move( me, f->m, target, l.abs );
+		l.abs = target;
+	}
+
+	_MOP->call( me, f->m, l );
 	_MOP->add( me, f->m, sp, sp, ds  );
 
 	release_tempn( _MOP, me, f->m, counter );
