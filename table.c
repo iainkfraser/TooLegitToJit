@@ -41,6 +41,8 @@ typedef struct table {
 } table_t; 
 
 table_t* table_create( int array, int hash ){
+	array = 0;	// for now 
+
 	size_t sz = sizeof( table_t ) + sizeof( struct TValue ) * array;
 	table_t* t = malloc( sizeof( sz ) );
 	if( !t )
@@ -53,30 +55,28 @@ table_t* table_create( int array, int hash ){
 
 
 void table_setlist( struct table* t, void* src, int idx, int sz ){
+	struct TValue *v, key = { .t = LUA_TNUMBER, .v.n = idx + 1 };
+
+	for( int i = 0; i < sz; i++, key.v.n++ ){
+		v = (struct TValue*)((char*)src + vreg_type_offset( i ));
+		table_set( t, key, *v );
+	}
+#if 0
 	for( int i = 0; i < sz; i++ ){
 	//	t->array[ idx + i ] = (char*)src + vreg_value_offset( i )
 		memcpy( &t->array[ idx + i ],
 			(char*)src + vreg_value_offset( i ),
 			sizeof( int ) );	// TODO: how do you know size? Need word size
 	}
+#endif
 }
 
 void table_set( struct table* t, struct TValue idx, struct TValue v ){
-	if( idx.t == LUA_TSTRING )
-		return;
-	t->array[ idx.v.n ] = v;
+	dictionary_insert( t->d, idx, v );
 }
 
 struct TValue table_get( struct table* t, struct TValue idx ){
-	if( idx.t == LUA_TSTRING ){
-		struct TValue r = { .t = LUA_TNUMBER, .v.n = 70 };
-		return r;
-	}
-
-	struct TValue ret;
-	ret = t->array[ idx.v.n - 1 ];
-//	ret.t = LUA_TNUMBER;
-	return ret;
+	return dictionary_search( t->d, idx );
 }
 
 /*
