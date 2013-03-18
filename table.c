@@ -1,5 +1,21 @@
 /*
 * (C) Iain Fraser - GPLv3
+* 
+* Note on Lua 5.x table implementation. Lua has the array/table
+* hybrid. Few points:
+*	1) Array value n ( based on invariants ) is only recalculated
+*	   when the hash table is forced to resize  i.e. the hash table has 
+*          been exhausted ( see point 2 ).
+*	2) The hash table is implemented as a variant of chained scatter
+*	   table. Kinda like open addressing except each probe is done
+*	   by pointer in collided slot to next available slot. Since its
+*	   not chained the table is exhausted when every slot is occupied.
+* 
+* This means we either have some interface for handling exhaustation so
+* that the array operations can be generic. Or just leave the array integration
+* to each speclisation. For now ill just have pure dictionary ( no array )
+* with trivial linked list implementation. Till performance demands dictate 
+* the direction.
 */ 
 
 #include <stdbool.h>
