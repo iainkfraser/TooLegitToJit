@@ -72,10 +72,11 @@ struct TValue table_get( struct table* t, struct TValue idx ){
 }
 
 /*
-* Lua jit callee functions ( args and return must be word/wordp ).
+* Lua jit callee functions ( args and return must be lua_Number/LUA_PTR ).
 */
 
-wordp ljc_tableget( wordp t, word idxt, word idxv, wordp type ){
+LUA_PTR ljc_tableget( LUA_PTR t, lua_Number idxt, lua_Number idxv
+							, LUA_PTR type ){
 	Tag* tag = (Tag*)type;
 	struct TValue idx = { .t = idxt, .v.n = idxv };	
 	struct TValue v = table_get( (struct table*)t, idx );
@@ -83,7 +84,9 @@ wordp ljc_tableget( wordp t, word idxt, word idxv, wordp type ){
 	return v.v.n;
 }
 
-void ljc_tableset( wordp t, word idxt, word idxv, word valt, word valv ){
+void ljc_tableset( LUA_PTR t, lua_Number idxt, lua_Number idxv
+							, lua_Number valt
+							, lua_Number valv ){
 	struct TValue idx = { .t = idxt, .v.n = idxv };	
 	struct TValue v = { .t = valt, .v.n = valv };
 	table_set( ( struct table*)t, idx, v );

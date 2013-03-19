@@ -446,6 +446,10 @@ static void cleanup( struct proto* p, struct code_alloc* ca ){
 	free( p->subp );
 }
 
+static int ctest( lua_State* L ){
+	printf("C function called!\n");
+}
+
 int main( int argc, char* argv[] ){
 	FILE* f = NULL;
 	struct proto main;
@@ -503,14 +507,12 @@ int main( int argc, char* argv[] ){
 
 
 	if( !disassem ){
+		// init C funcs
+		lua_pushcfunction( &ls, &ctest );
+		lua_setglobal( &ls, "ctest" );
+
 		assert( main.sizeupvalues == 1 );
-		
-		// create main closure 
-		struct TValue globalenv = { .t = LUA_TTABLE };	
-		globalenv.v.gc = (struct gcheader*)table_create( 0, 0 ); 
-		
-		struct closure* cmain = closure_create( &main, NULL, &globalenv );
-	
+		struct closure* cmain = closure_create( &main, NULL, &ls.genv );
 		execute( cmain, jfunc_addr( e, JF_PROLOGUE ) );
 	
 		// deref c closure do garbage collection

@@ -6,6 +6,7 @@
 #ifndef _LOBJECT_H_
 #define _LOBJECT_H_
 
+#include "lapi.h"
 #include <stdint.h>
 #include <stdbool.h>
 #include "list.h"
@@ -71,11 +72,6 @@ struct table;
 struct closure;
 struct lua_State;
 
-typedef uint32_t word;
-typedef uintptr_t wordp;
-typedef word lua_Number;
-typedef word Tag;
-typedef int (*lua_CFunction) ( struct lua_State *L );
 
 struct gcheader {
 	int rc;	
@@ -89,8 +85,10 @@ union Value {
 	void*		p;	// light user data
 };
 
-gl_static_assert( sizeof( union Value ) == sizeof( word ) );
-gl_static_assert( sizeof( wordp ) == sizeof( word ) );
+gl_static_assert( sizeof( union Value ) == sizeof( lua_Number ) );
+gl_static_assert( sizeof( LUA_PTR ) == sizeof( lua_Number ) );
+
+typedef lua_Number Tag;
 
 struct TValue {
 	Tag t;		// compile will word align might as well make it explcit	

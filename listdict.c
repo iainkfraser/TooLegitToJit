@@ -3,6 +3,7 @@
 * Temp shitty linked list implementation of dictionary.
 */
 
+#include <string.h>
 #include <stdint.h>
 #include <assert.h>
 #include <stdlib.h>
@@ -37,8 +38,20 @@ static struct node* find( struct dictionary * d, struct TValue k ){
 	struct list_head *seek; 
 	list_for_each( seek, &d->head ){
 		struct node* n = list_entry( seek, struct node, link );	
-		if( n->k.t == k.t && n->k.v.n == k.v.n )
-			return n;
+	/*	if( n->k.t == k.t && n->k.v.n == k.v.n )
+			return n; */
+		switch( n->k.t ){
+			case LUA_TSTRING:
+				if( !strcmp( (char*)n->k.v.gc, (char*)k.v.gc ) )
+					return n;
+				break;
+			case LUA_TNUMBER:
+				if( n->k.v.n == k.v.n )
+					return n;
+				break;
+			default:
+				assert( false );
+		}
 	}
 
 	return NULL;

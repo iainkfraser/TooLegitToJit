@@ -18,7 +18,11 @@ struct TValue table_get( struct table* t, struct TValue idx );
 * Lua jitter callee funcs.
 */
 
-wordp ljc_tableget( wordp t, word idxt, word idxv, wordp type );
-void ljc_tableset( wordp t, word idxt, word idxv, word valt, word valv );
+LUA_PTR ljc_tableget( LUA_PTR t, lua_Number idxt, lua_Number idxv
+						, LUA_PTR type );
+
+void ljc_tableset( LUA_PTR t, lua_Number idxt, lua_Number idxv
+						, lua_Number valt
+						, lua_Number valv );
 
 #endif
