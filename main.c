@@ -507,7 +507,7 @@ int main( int argc, char* argv[] ){
 		
 		// create main closure 
 		struct TValue globalenv = { .t = LUA_TTABLE };	
-		globalenv.v.t = table_create( 0, 0 ); 
+		globalenv.v.gc = (struct gcheader*)table_create( 0, 0 ); 
 		
 		struct closure* cmain = closure_create( &main, NULL, &globalenv );
 	

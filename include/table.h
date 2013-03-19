@@ -7,8 +7,6 @@
 
 #include "lobject.h"
 
-struct table;
-
 struct table* table_create( int array, int hash );
 void table_setlist( struct table* t, void* src, int idx, int sz );
 

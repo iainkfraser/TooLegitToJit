@@ -60,7 +60,7 @@ void closure_close( struct TValue* stackbase ){
 }
 
 /*
-* Close environment by linking all upvalues. 
+* Create Lua closure. Close environment by linking all upvalues. 
 */
 struct closure* closure_create( struct proto* p, struct closure** pparent, struct TValue* stackbase ){
 	#define parent	( *pparent )	// pparent maybe NULL e.g. main chunk so do lazy deref

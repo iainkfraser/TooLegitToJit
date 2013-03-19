@@ -32,14 +32,6 @@
 
 #define THROW( e )	do{}while(0)	
 
-
-typedef struct table {
-	// TODO: garbage collect data  
-	size_t asz;		// array size	
-	struct dictionary *d;
-	struct TValue array[];
-} table_t; 
-
 table_t* table_create( int array, int hash ){
 	array = 0;	// for now 
 

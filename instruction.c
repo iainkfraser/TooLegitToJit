@@ -164,16 +164,16 @@ void emit_setlist( struct emitter** mce, struct machine_ops* mop, struct frame* 
 }
 
 void emit_closure( struct emitter** mce, struct machine_ops* mop, struct frame* f, loperand dst, struct proto* p ){
-	// TODO: set type of dst to closure 
-	operand d = loperand_to_operand( f, dst ).value;
+	vreg_operand d = loperand_to_operand( f, dst );
 	operand pproto = OP_TARGETIMMED( (uintptr_t)p );
 	operand parentc = get_frame_closure( f );  
 	operand stackbase = vreg_to_operand( f, 0, true ).type;
 
 	operand sb = OP_TARGETREG( acquire_temp( mop, REF, f->m ) );
 	mop->add( REF, f->m, sb, OP_TARGETREG( stackbase.base ), OP_TARGETIMMED( stackbase.offset ) );
-	mop->call_static_cfn( REF, f, (uintptr_t)&closure_create, &d, 3, pproto, parentc, sb );
+	mop->call_static_cfn( REF, f, (uintptr_t)&closure_create, &d.value, 3, pproto, parentc, sb );
 	release_temp( mop, REF, f->m );
+	mop->move( REF, f->m, d.type, OP_TARGETIMMED( ctb( LUA_TLCL ) ) );
 }
 
 
