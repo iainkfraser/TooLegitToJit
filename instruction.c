@@ -177,20 +177,27 @@ void emit_closure( struct emitter** mce, struct machine_ops* mop, struct frame* 
 }
 
 
-void emit_call( struct emitter** mce, struct machine_ops* mop, struct frame* f, loperand closure, int nr_params, int nr_results ){
+void emit_call( struct emitter** mce, struct machine_ops* mop, struct frame* f,
+			 loperand closure, int nr_params, int nr_results ){
 	assert( closure.islocal );
 
 #if 0
 //	store_frame( mop, REF, f );	
 #else
-	jfunc_call( mop, REF, f->m, JF_STORE_LOCALS, jf_storelocal_offset( f->m, f->nr_locals ), JFUNC_UNLIMITED_STACK, 0 );
+	jfunc_call( mop, REF, f->m, JF_STORE_LOCALS
+			, jf_storelocal_offset( f->m, f->nr_locals )
+			, JFUNC_UNLIMITED_STACK
+			, 0 );
 #endif 
 
 	do_call( mop, REF, f, closure.index, nr_params, nr_results );
 #if 0 
 	load_frame( mop, REF, f );
 #else
-	jfunc_call( mop, REF, f->m, JF_LOAD_LOCALS, jf_loadlocal_offset( f->m, f->nr_locals ), JFUNC_UNLIMITED_STACK, 0 );
+	jfunc_call( mop, REF, f->m, JF_LOAD_LOCALS
+			, jf_loadlocal_offset( f->m, f->nr_locals )
+			, JFUNC_UNLIMITED_STACK
+			, 0 );
 #endif
 }
 

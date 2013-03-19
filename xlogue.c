@@ -60,7 +60,8 @@ enum REGARGS { RA_NR_ARGS, RA_BASE, RA_COUNT };
 //enum { RA_DST, RA_SRC, RA_EXIST, RA_EXPECT, RA_SIZE };
 enum { RA_EXIST, RA_SRC, RA_DST, RA_EXPECT, RA_SIZE };
 
-static void precall( struct machine_ops* mop, struct emitter* e, struct frame* f, int vregbase, int narg, int nret ){
+static void precall( struct machine_ops* mop, struct emitter* e, struct frame* f,
+				 int vregbase, int narg, int nret ){
 	// new frame assumes no temporaries have been used yet 
 	assert( temps_accessed( f->m ) == 0 );
 	assert( RA_COUNT + 1 <= f->m->nr_reg );		// regargs are passed by register NOT stack
@@ -79,25 +80,27 @@ static void precall( struct machine_ops* mop, struct emitter* e, struct frame* f
 	if( narg > 0 )
 		mop->move( e, f->m, rargs[ RA_NR_ARGS ], OP_TARGETIMMED( narg - 1 ) );
 	else{
-		// calculate total by subtracting basereg address from stack.
+		/* 
+		* Calculate total by subtracting basereg address from stack.
+		* 2 becuase 8 for (ebp,closure) another 8 for the function 
+		* being called ( rem actual args = args - 1 )
+		*/
+		mop->add( e, f->m, rargs[ RA_NR_ARGS ], OP_TARGETREG( f->m->fp )
+					, OP_TARGETIMMED( -8 * ( 2 + vregbase ) ) );
 
-		// 2 becuase 8 for (ebp,closure) another 8 for the function being called ( rem actual args = args - 1 )
-		mop->add( e, f->m, rargs[ RA_NR_ARGS ], OP_TARGETREG( f->m->fp ), OP_TARGETIMMED( -8 * ( 2 + vregbase ) ) );
-		mop->sub( e, f->m, rargs[ RA_NR_ARGS ], rargs[ RA_NR_ARGS ], OP_TARGETREG( f->m->sp ) );	
-		mop->udiv( e, f->m, rargs[ RA_NR_ARGS ], rargs[ RA_NR_ARGS ], OP_TARGETIMMED( 8 ) );
+		mop->sub( e, f->m, rargs[ RA_NR_ARGS ], rargs[ RA_NR_ARGS ]
+					, OP_TARGETREG( f->m->sp ) );	
+
+		mop->udiv( e, f->m, rargs[ RA_NR_ARGS ], rargs[ RA_NR_ARGS ]
+					, OP_TARGETIMMED( 8 ) );
 	}
 
 	// calcualte base address	
-	mop->add( e, f->m, rargs[ RA_BASE ], OP_TARGETREG( cstack.value.base ), OP_TARGETIMMED( cstack.value.offset ) );
+	address_of( mop, e, f->m, rargs[ RA_BASE ], cstack.value );
 	
 	// call function without spilling any temps
-#if 0
-	bool prior = disable_spill( f->m );
-	mop->call( e, f->m, LBL_ABS( clive.value ) );
-	restore_spill( f->m, prior );
-#else
-	jfunc_call( mop, e, f->m, JF_PROLOGUE, 0, JFUNC_UNLIMITED_STACK, 2, rargs[ RA_EXIST ], rargs[ RA_SRC ] );
-#endif
+	jfunc_call( mop, e, f->m, JF_PROLOGUE, 0, JFUNC_UNLIMITED_STACK, 2
+					, rargs[ RA_EXIST ], rargs[ RA_SRC ] );
 
 	// release temps used in call
 	prefer_nontemp_release_reg( mop, e, f->m, RA_COUNT );
@@ -396,22 +399,26 @@ void jinit_epi( struct JFunc* jf, struct machine_ops* mop, struct emitter* e, st
 	prefer_nontemp_release_reg( mop, e, f->m, RA_SIZE );
 }
 
-/*
-* Do the majority ( function independent ) part of the prologue. That is: store the frame section,
-* update src and dst pointers and call the memcpy.
+/* 
+* If Lua closure do the majority ( function independent ) of the prologue. 
+* That is: store the frame section, update src and dst pointers and call 
+* the memcpy.
 *
-* The function specific code needs to set the number of params, update the stack ( requires # of locals )
-* and then unspill params.  
+* The function specific code needs to set the number of params, update the 
+* stack ( requires # of locals ) and then unspill params.  
 */
-void jinit_pro( struct JFunc* jf, struct machine_ops* mop, struct emitter* e, struct machine* m ){
+static void lcl_pro( struct machine_ops* mop, struct emitter* e, 
+			struct machine* m ){
 	// phoney frame 
 	struct frame F = { .m = m, .nr_locals = 1, .nr_params = 0 };
 	struct frame *f = &F;
 
+	const int maxstack = JFUNC_UNLIMITED_STACK; 
 	const operand sp = OP_TARGETREG( f->m->sp );
 	const operand fp = OP_TARGETREG( f->m->fp );
-	const vreg_operand basestack = vreg_to_operand( f, 0, true );		// destination is first local
-	const int maxstack = JFUNC_UNLIMITED_STACK; 
+
+	// destination is first local
+	const vreg_operand basestack = vreg_to_operand( f, 0, true );		
 	
 	operand rargs[ RA_SIZE ];
 	prefer_nontemp_acquire_reg( mop, e, f->m, RA_SIZE, rargs );
@@ -449,7 +456,41 @@ void jinit_pro( struct JFunc* jf, struct machine_ops* mop, struct emitter* e, st
 #endif
 
 	prefer_nontemp_release_reg( mop, e, f->m, RA_SIZE );
+}
 
+static void lcf_pro( struct machine_ops *mop, struct emitter *e, struct machine *m ){
+	
+}
+
+/*
+* Determine the type of function. If light C function then call the C invoker
+* function.
+*/
+void jinit_pro( struct JFunc* jf, struct machine_ops* mop, struct emitter* e,
+				 struct machine* m ){
+
+	operand rargs[ RA_SIZE ];
+	prefer_nontemp_acquire_reg( mop, e, m, RA_SIZE, rargs );
+
+	// expect has not been used yet, so use it store type of function
+	operand tag = OP_TARGETDADDR( rargs[ RA_BASE ].reg
+				, vreg_type_offset( 0 ) );
+	mop->move( e, m, rargs[ RA_EXPECT ], tag );
+			
+
+	mop->beq( e, m, rargs[ RA_EXPECT ], OP_TARGETIMMED( ctb( LUA_TLCL ) )
+			, LBL_NEXT( 0 ) ); 
+	mop->beq( e, m, rargs[ RA_EXPECT ], OP_TARGETIMMED( ctb( LUA_TLCF ) )
+			, LBL_NEXT( 1 ) ); 
+	// TODO: C closure
+	// TODO: runtime Lua error
+
+	prefer_nontemp_release_reg( mop, e, m, RA_SIZE );
+
+	e->ops->label_local( e, 0 );
+	lcl_pro( mop, e, m );
+	e->ops->label_local( e, 1 );
+	lcf_pro( mop, e, m );	
 }
 
 /*
