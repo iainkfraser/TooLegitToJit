@@ -447,7 +447,17 @@ static void cleanup( struct proto* p, struct code_alloc* ca ){
 }
 
 static int ctest( lua_State* L ){
-	printf("C function called!\n");
+	struct TValue ret = { .t = LUA_TNUMBER };
+	struct TValue* x = L->top - 1;
+	if( x->t == LUA_TSTRING )
+		ret.v.n = printf("C function called: %s\n", (char*)x->v.gc );
+	else
+		ret.v.n = printf("C function called: %d\n", x->v.n );
+
+
+	lua_pushnumber( L, ret.v.n );	
+
+	return 1;
 }
 
 int main( int argc, char* argv[] ){

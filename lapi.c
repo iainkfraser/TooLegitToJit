@@ -18,9 +18,15 @@
 ** push functions (C -> stack)
 */
 
+void lua_pushnumber(lua_State *L, lua_Number n){
+	L->top->t = LUA_TNUMBER;
+	L->top->v.n = n;
+	L->top++;
+}
+
 void lua_pushcclosure(lua_State *L, lua_CFunction fn, int n) {
 	assert( n == 0 );	// No C closures atm 
-	L->top->t = LUA_TLCF;
+	L->top->t = ctb( LUA_TLCF );
 	L->top->v.f = fn;
 	L->top++;
 }

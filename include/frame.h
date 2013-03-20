@@ -43,7 +43,7 @@ void emit_footer( struct machine_ops* mop, struct emitter* e, struct frame* f );
 vreg_operand vreg_to_operand( struct frame* f, int vreg, bool stackonly );
 vreg_operand const_to_operand( struct frame* f, int k );
 
-// pointer mapping for stack only
+// pointer mapping for stack only. Assume pointing at bottom value.
 intptr_t vreg_value_offset( int idx );
 intptr_t vreg_type_offset( int idx ); 
 struct TValue* vreg_tvalue_offset( struct TValue* base, int idx );

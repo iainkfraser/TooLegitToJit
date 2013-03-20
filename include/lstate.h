@@ -26,5 +26,4 @@ struct lua_State {
 
 void lstate_preinit( lua_State* ls );
 lua_State* current_state();	// the current execution context lua state
-
 #endif

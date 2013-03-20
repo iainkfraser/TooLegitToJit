@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #include "lstate.h"
 #include "table.h"
+#include "frame.h"
 
 static lua_State* current;		// TODO: this is a temp solution change it later!! 
 

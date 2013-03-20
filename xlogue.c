@@ -17,6 +17,10 @@
 #include "stack.h"
 #include "jitfunc.h"
 #include "func.h"
+#include "lstate.h"
+#include "lobject.h"
+
+static LUA_PTR ljc_invokec( LUA_PTR base, size_t n, lua_Number* nres );
 
 static int stack_frame_size( int nr_locals ){
 	int k = 4 * 4;	// ra, closure, return position, nr results 
@@ -458,8 +462,53 @@ static void lcl_pro( struct machine_ops* mop, struct emitter* e,
 	prefer_nontemp_release_reg( mop, e, f->m, RA_SIZE );
 }
 
+/*
+* Call the C function invoker. 
+*/
 static void lcf_pro( struct machine_ops *mop, struct emitter *e, struct machine *m ){
-	
+	// phoney frame 
+	struct frame F = { .m = m, .nr_locals = 0, .nr_params = 0 };
+	struct frame *f = &F;
+
+	const operand ra = OP_TARGETREG( f->m->ra );
+	const operand sp = OP_TARGETREG( f->m->sp );
+
+	operand rargs[ RA_SIZE ];
+	prefer_nontemp_acquire_reg( mop, e, m, RA_SIZE, rargs );
+	prefer_nontemp_release_reg( mop, e, m, RA_SIZE );
+
+	// need to store return address 
+	if( f->m->is_ra )
+		pushn( mop, e, f->m, 2, ra, rargs[ RA_BASE ] ); 
+	else
+		pushn( mop, e, f->m, 1, rargs[ RA_BASE ] );
+
+	// need pointer to get number of results, use RA_EXPECT as not used.
+	mop->add( e, f->m, sp, sp, OP_TARGETIMMED( -4 ) ); 
+	mop->move( e,f->m, rargs[ RA_EXPECT ], sp ); 
+
+	/*
+	* Reuse RA_BASE is uses:
+	*	1) It is the C closure on entry
+	*	2) The register will contain result src ptr on exit
+	*/	
+	mop->call_static_cfn( e, f, (uintptr_t)&ljc_invokec, &rargs[ RA_BASE ] 
+							, 3 
+							, rargs[ RA_BASE ]
+							, rargs[ RA_NR_ARGS ]
+							, rargs[ RA_EXPECT ] );
+
+	// get number of results.
+	mop->move( e, f->m, rargs[RA_NR_ARGS], OP_TARGETDADDR( sp.reg, 0 ) );
+	mop->add( e, f->m, sp, sp, OP_TARGETIMMED( 4 ) ); 
+		
+
+	if( f->m->is_ra )
+		popn( mop, e, f->m, 2, rargs[ RA_DST ], ra ); 
+	else
+		popn( mop, e, f->m, 1, rargs[ RA_DST ] );
+
+	mop->ret( e, m );
 }
 
 /*
@@ -516,8 +565,11 @@ void jinit_vresult_postcall( struct JFunc* jf, struct machine_ops* mop, struct e
 		pushn( mop, e, f->m, 1, OP_TARGETREG( f->m->ra) );	// not safe cause of stack
 
 	// copy args across 
-	jfunc_call( mop, e, f->m, JF_ARG_RES_CPY, 0, maxstack, 4, rargs[ RA_SRC ], rargs[ RA_DST ], 
-						rargs[ RA_EXPECT ], rargs[ RA_EXIST ] );
+	jfunc_call( mop, e, f->m, JF_ARG_RES_CPY, 0, maxstack, 4
+						, rargs[ RA_SRC ]
+						, rargs[ RA_DST ]
+						, rargs[ RA_EXPECT ]
+						, rargs[ RA_EXIST ] );
 
 	if( f->m->is_ra )
 		popn( mop, e, f->m, 1, OP_TARGETREG( f->m->ra) );
@@ -536,3 +588,32 @@ void jinit_vresult_postcall( struct JFunc* jf, struct machine_ops* mop, struct e
 
 	
 }
+
+
+
+
+/*
+* Call from Jitted code. The base pointer initally points to the
+* C function to be called and ptr + vreg is start of arguments. On
+* return the results are stored starting at base.
+*/
+
+static LUA_PTR ljc_invokec( LUA_PTR base, size_t n, lua_Number* nres ){
+	struct TValue* cfn = (struct TValue*)( base + vreg_type_offset( 0 ) ); 
+	struct TValue* argv = cfn - 1;
+	struct TValue* res = cfn;
+	lua_State* L = current_state();
+
+	// copy args to vstack
+	for( int i = 1; i <= n; i++, L->top++, argv-- )
+		*L->top = *argv;	
+
+	// only set nres after call function because  *maybe* ptr are equal
+	*nres = (lua_Number)cfn->v.f( L );
+
+	// TODO: reverse order for postcall	
+	struct TValue* top = L->top - 1;
+	L->top -= *nres;
+
+	return (LUA_PTR)&top->v;
+} 
