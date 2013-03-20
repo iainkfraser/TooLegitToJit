@@ -448,7 +448,7 @@ static void cleanup( struct proto* p, struct code_alloc* ca ){
 
 static int ctest( lua_State* L ){
 	struct TValue ret = { .t = LUA_TNUMBER };
-	struct TValue* x = L->top - 1;
+	struct TValue* x = L->top;
 	if( x->t == LUA_TSTRING )
 		ret.v.n = printf("C function called: %s\n", (char*)x->v.gc );
 	else

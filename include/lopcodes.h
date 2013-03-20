@@ -17,22 +17,6 @@ typedef uint32_t Instruction;
 #define MAX_INT (INT_MAX-2)  /* maximum value of an int (-2 for safety) */
 
 
-/*
-@@ LUAI_BITSINT defines the number of bits in an int.
-** CHANGE here if Lua cannot automatically detect the number of bits of
-** your machine. Probably you do not need to change this.
-*/
-/* avoid overflows in comparison */
-#if INT_MAX-20 < 32760		/* { */
-#define LUAI_BITSINT	16
-#elif INT_MAX > 2147483640L	/* }{ */
-/* int has at least 32 bits */
-#define LUAI_BITSINT	32
-#else				/* }{ */
-#error "you must define LUA_BITSINT with number of bits in an integer"
-#endif				/* } */
-
-
 #endif
 
 /*===========================================================================

@@ -9,6 +9,15 @@
 #include <stdarg.h>
 #include "luaconf.h"
 
+/*
+** pseudo-indices
+*/
+#define LUA_REGISTRYINDEX	LUAI_FIRSTPSEUDOIDX
+#define lua_upvalueindex(i)	(LUA_REGISTRYINDEX - (i))
+
+/* minimum Lua stack available to a C function */
+#define LUA_MINSTACK	20
+
 //struct lua_State;
 typedef struct lua_State lua_State;
 
@@ -22,6 +31,36 @@ typedef LUA_INTEGER lua_Integer;
 typedef LUA_UNSIGNED lua_Unsigned;
 
 typedef int (*lua_CFunction) ( struct lua_State *L );
+
+struct TValue;
+
+/*
+* Useful internal stack manipulation. Internal code
+* is adviced to *always* use these incase the stack
+* implementation changes. 
+*
+* TODO: Make sure not in the api header i.e. lua.h
+*/
+struct TValue lua_safepop( lua_State *L );
+void lua_safepush( lua_State *L, struct TValue v );
+struct TValue* index2addr (lua_State *L, int idx);
+void initstack( lua_State *L, struct TValue* s, size_t sz );
+
+/*
+** basic stack manipulation
+*/
+LUA_API int   (lua_absindex) (lua_State *L, int idx);
+LUA_API int   (lua_gettop) (lua_State *L);
+LUA_API void  (lua_settop) (lua_State *L, int idx);
+LUA_API void  (lua_pushvalue) (lua_State *L, int idx);
+LUA_API void  (lua_remove) (lua_State *L, int idx);
+LUA_API void  (lua_insert) (lua_State *L, int idx);
+LUA_API void  (lua_replace) (lua_State *L, int idx);
+LUA_API void  (lua_copy) (lua_State *L, int fromidx, int toidx);
+LUA_API int   (lua_checkstack) (lua_State *L, int sz);
+
+LUA_API void  (lua_xmove) (lua_State *from, lua_State *to, int n);
+
 
 /*
 ** push functions (C -> stack)

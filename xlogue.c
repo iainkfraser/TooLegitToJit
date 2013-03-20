@@ -529,7 +529,7 @@ void jinit_pro( struct JFunc* jf, struct machine_ops* mop, struct emitter* e,
 
 	mop->beq( e, m, rargs[ RA_EXPECT ], OP_TARGETIMMED( ctb( LUA_TLCL ) )
 			, LBL_NEXT( 0 ) ); 
-	mop->beq( e, m, rargs[ RA_EXPECT ], OP_TARGETIMMED( ctb( LUA_TLCF ) )
+	mop->beq( e, m, rargs[ RA_EXPECT ], OP_TARGETIMMED( LUA_TLCF )
 			, LBL_NEXT( 1 ) ); 
 	// TODO: C closure
 	// TODO: runtime Lua error
@@ -604,16 +604,29 @@ static LUA_PTR ljc_invokec( LUA_PTR base, size_t n, lua_Number* nres ){
 	struct TValue* res = cfn;
 	lua_State* L = current_state();
 
+	// setup new call stack
+	struct TValue callstack[ LUA_MINSTACK ];
+	struct TValue *oldstack = L->stack;
+	struct TValue *oldtop = L->top;
+	initstack( L, callstack, LUA_MINSTACK ); 
+	
 	// copy args to vstack
-	for( int i = 1; i <= n; i++, L->top++, argv-- )
-		*L->top = *argv;	
+	for( int i = 1; i <= n; i++, argv-- )
+		lua_safepush( L, *argv );	
 
 	// only set nres after call function because  *maybe* ptr are equal
 	*nres = (lua_Number)cfn->v.f( L );
 
-	// TODO: reverse order for postcall	
-	struct TValue* top = L->top - 1;
-	L->top -= *nres;
+	/*
+	* Get pointer to first result value. Will be copied later on
+	* by postcall functions. Presuming that C won't clobber this
+	* callframe ( i.e. the callstack array ), but why would it?
+	*/
+	struct TValue* ret = index2addr( L, -*nres );
 
-	return (LUA_PTR)&top->v;
+	// restore all stack frame
+	L->stack = oldstack;
+	L->top = oldtop; 
+
+	return (LUA_PTR)&ret->v;
 } 

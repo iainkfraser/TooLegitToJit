@@ -30,6 +30,8 @@
 
 #define static_assert(x)        do{switch(0){case false: case x:;}}while(0)
 
+#define array_count( x )	( sizeof( x ) / sizeof( 0[x] ) )
+
 /*
 * Credit to Pádraig Brady, the below macros have his copyright. 
 */
