@@ -302,6 +302,10 @@ int load_code( FILE* f, struct proto* p, struct code_alloc* ca, struct machine* 
 					to_loperand( GETARG_B( ins ) ), 
 					to_loperand( GETARG_C( ins ) ) );
 				break;
+			case OP_SETTABLE:
+				emit_settable( &mce, mop, &fr, to_loperand( A )
+					, to_loperand( GETARG_B( ins ) ) 
+					, to_loperand( GETARG_C( ins ) ) );
 			case OP_LOADNIL:
 				// TODO: pretty simple	
 				break;
@@ -337,6 +341,12 @@ int load_code( FILE* f, struct proto* p, struct code_alloc* ca, struct machine* 
 					to_loperand( A ),
 					GETARG_B( ins ), 
 					to_loperand( GETARG_C( ins ) ) );
+				break;
+			case OP_SELF:
+				emit_self( &mce, mop, &fr
+					, to_loperand( A )
+					, to_loperand( GETARG_B( ins ) )
+					, to_loperand( GETARG_C( ins ) ) );	
 				break;
 			default:
 				printf("%d\n", GET_OPCODE( ins ) );

@@ -24,7 +24,17 @@ void emit_mod( struct emitter** mce, struct machine_ops* mop, struct frame* f, l
 void emit_forprep( struct emitter** mce, struct machine_ops* mop, struct frame* f, loperand init, int pc, int j );
 void emit_forloop( struct emitter** mce, struct machine_ops* mop, struct frame* f, loperand loopvar, int pc, int j );
 
-void emit_gettable( struct emitter** mce, struct machine_ops* mop, struct frame* f, loperand dst, loperand table, loperand idx );
+void emit_gettable( struct emitter** mce, struct machine_ops* mop
+						, struct frame* f
+						, loperand dst
+						, loperand table
+						, loperand idx );
+void emit_settable( struct emitter** mce, struct machine_ops* mop
+						, struct frame* f 
+						, loperand table
+						, loperand idx 
+						, loperand src );
+
 void emit_newtable( struct emitter** mce, struct machine_ops* mop, struct frame* f, loperand dst, int array, int hash );
 void emit_setlist( struct emitter** mce, struct machine_ops* mop, struct frame* f, loperand table, int n, int block );
 
@@ -48,4 +58,10 @@ void emit_gettableup( struct emitter** mce, struct machine_ops* mop,
 void emit_settableup( struct emitter** mce, struct machine_ops* mop, 
 				struct frame* f, int uvidx, loperand tidx,
 				loperand value );
+void emit_self( struct emitter** mce, struct machine_ops* mop
+					, struct frame *f
+					, loperand dval
+					, loperand stable
+					, loperand key );
+
 #endif 

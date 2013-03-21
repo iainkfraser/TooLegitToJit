@@ -271,10 +271,11 @@ static void do_settable( struct emitter** mce, struct machine_ops* mop,
 }
 					 
 
-void emit_gettable( struct emitter** mce, struct machine_ops* mop, 
-						struct frame* f, 
-						loperand dst, loperand table, 
-						loperand idx ){
+void emit_gettable( struct emitter** mce, struct machine_ops* mop
+						, struct frame* f 
+						, loperand dst
+						, loperand table
+						, loperand idx ){
 	assert( ISLO_LOCAL( dst ) );
 
 	// TODO: verify its a table
@@ -282,6 +283,18 @@ void emit_gettable( struct emitter** mce, struct machine_ops* mop,
 
 	do_gettable( mce, mop, f, dst.index, t.value
 					, loperand_to_operand( f, idx ) );
+}
+
+void emit_settable( struct emitter** mce, struct machine_ops* mop
+						, struct frame* f 
+						, loperand table
+						, loperand idx 
+						, loperand src ){
+	vreg_operand vtable = loperand_to_operand( f, table );
+	// TODO: verify its a table
+	do_settable( mce, mop, f, vtable.value
+				, loperand_to_operand( f, idx )
+				, loperand_to_operand( f, src ) );
 }
 
 void emit_getupval( struct emitter** mce, struct machine_ops* mop
@@ -339,5 +352,22 @@ void emit_settableup( struct emitter** mce, struct machine_ops* mop,
 	do_settable( mce, mop, f, dval, loperand_to_operand( f, tidx )
 					, loperand_to_operand( f, value  ) );
 	release_temp( mop, REF, f->m );
+}
+
+
+void emit_self( struct emitter** mce, struct machine_ops* mop
+					, struct frame *f
+					, loperand dval
+					, loperand stable
+					, loperand key ) {
+	assert( dval.islocal );
+	loperand dtable = { .islocal = true, .index = dval.index + 1 };
+	vreg_operand vstable = loperand_to_operand( f, stable );
+
+	// TODO: verify stable is a table
+	assign( mop, REF, f->m, loperand_to_operand( f, dtable ), vstable );
+	do_gettable( mce, mop, f, dval.index, vstable.value
+					, loperand_to_operand( f, key ) );
+
 }
 
