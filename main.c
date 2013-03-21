@@ -323,6 +323,9 @@ int load_code( FILE* f, struct proto* p, struct code_alloc* ca, struct machine* 
 			case OP_GETUPVAL:
 				emit_getupval( &mce, mop, &fr, to_loperand( A ), GETARG_B( ins ) );
 				break;
+			case OP_SETUPVAL:
+				emit_setupval( &mce, mop, &fr, to_loperand( A ), GETARG_B( ins ) );
+				break;
 			case OP_SETTABUP:
 				emit_settableup( &mce, mop, &fr, 
 					GETARG_B( A ),
@@ -530,7 +533,7 @@ int main( int argc, char* argv[] ){
 		struct closure* cmain = closure_create( &main, NULL, &ls.genv );
 		execute( cmain, jfunc_addr( e, JF_PROLOGUE ) );
 
-#if 1		// test calling a Lua function
+#if 0		// test calling a Lua function
 		lua_getglobal( &ls, "lfn" );
 		lua_pushnumber( &ls, 777 );
 		lua_call( &ls, 1, 3 );			

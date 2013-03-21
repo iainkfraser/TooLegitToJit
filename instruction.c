@@ -206,24 +206,32 @@ void emit_ret( struct emitter** mce, struct machine_ops* mop, struct frame* f, l
 	do_ret( mop, REF, f, base.index, nr_results );
 } 
 
-static void do_getupval( struct emitter** mce, struct machine_ops* mop, 
-					struct frame* f,
-					operand dval,
-					operand dtype,
-					int uvidx ){
+
+static void getupvalptr( struct emitter **mce, struct machine_ops *mop
+						, struct frame* f
+						, operand uvptr
+						, int uvidx ){
+
 	operand closure =  get_frame_closure( f );
-	operand closeptr = OP_TARGETREG( acquire_temp( mop, REF, f->m ) );
 	const int uvptr_src = offsetof( struct closure, uvs ) + sizeof( struct UpVal* ) * uvidx;
 	const int tval_src = offsetof( struct UpVal, val );
 
 	// deref closure**, then get upval pointer  
-	mop->move( REF, f->m, closeptr, closure ); 
-	mop->move( REF, f->m, closeptr, OP_TARGETDADDR( closeptr.reg, 0 ) );
-	mop->move( REF, f->m, closeptr, OP_TARGETDADDR( closeptr.reg, uvptr_src ) );
-	mop->move( REF, f->m, closeptr, OP_TARGETDADDR( closeptr.reg, tval_src ) ); 
-	mop->move( REF, f->m, dval, OP_TARGETDADDR( closeptr.reg, offsetof( struct TValue, v ) ) );
-	mop->move( REF, f->m, dtype, OP_TARGETDADDR( closeptr.reg, offsetof( struct TValue, t ) ) ); 
+	mop->move( REF, f->m, uvptr, closure ); 
+	mop->move( REF, f->m, uvptr, OP_TARGETDADDR( uvptr.reg, 0 ) );
+	mop->move( REF, f->m, uvptr, OP_TARGETDADDR( uvptr.reg, uvptr_src ) );
+	mop->move( REF, f->m, uvptr, OP_TARGETDADDR( uvptr.reg, tval_src ) ); 
+}				
 
+static void do_getupval( struct emitter** mce, struct machine_ops* mop, 
+						struct frame* f,
+						operand dval,
+						operand dtype,
+						int uvidx ){
+	operand uvptr = OP_TARGETREG( acquire_temp( mop, REF, f->m ) );
+	getupvalptr( mce, mop, f, uvptr, uvidx );
+	mop->move( REF, f->m, dval, OP_TARGETDADDR( uvptr.reg, offsetof( struct TValue, v ) ) );
+	mop->move( REF, f->m, dtype, OP_TARGETDADDR( uvptr.reg, offsetof( struct TValue, t ) ) ); 
 	release_temp( mop, REF, f->m );
 }
 
@@ -276,9 +284,29 @@ void emit_gettable( struct emitter** mce, struct machine_ops* mop,
 					, loperand_to_operand( f, idx ) );
 }
 
-void emit_getupval( struct emitter** mce, struct machine_ops* mop, struct frame* f, loperand dst, int uvidx ){
+void emit_getupval( struct emitter** mce, struct machine_ops* mop
+						, struct frame* f
+						, loperand dst
+						, int uvidx ){
 	vreg_operand d = loperand_to_operand( f, dst );
 	do_getupval( mce, mop, f, d.value, d.type, uvidx );
+}
+
+void emit_setupval( struct emitter** mce, struct machine_ops* mop
+						, struct frame* f
+						, loperand src
+						, int uvidx ){
+	operand uvptr = OP_TARGETREG( acquire_temp( mop, REF, f->m ) );
+	vreg_operand s = loperand_to_operand( f, src );
+	
+	getupvalptr( mce, mop, f, uvptr, uvidx );
+	mop->move( REF, f->m
+			, OP_TARGETDADDR( uvptr.reg, offsetof( struct TValue, v ) )
+			, s.value );
+	mop->move( REF, f->m
+			, OP_TARGETDADDR( uvptr.reg, offsetof( struct TValue, t ) ) 
+			, s.type ); 
+	release_temp( mop, REF, f->m ); 
 }
 
 
