@@ -532,7 +532,12 @@ int main( int argc, char* argv[] ){
 
 #if 1		// test calling a Lua function
 		lua_getglobal( &ls, "lfn" );
-		lua_call( &ls, 0, 0 );			
+		lua_pushnumber( &ls, 777 );
+		lua_call( &ls, 1, 3 );			
+		printf("Lua returned %d %d %d\n",
+			lua_safepop( &ls ).v.n,
+			lua_safepop( &ls ).v.n,
+			lua_safepop( &ls ).v.n );
 #endif	
 
 

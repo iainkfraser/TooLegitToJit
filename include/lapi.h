@@ -115,5 +115,12 @@ LUA_API void  (lua_setuservalue) (lua_State *L, int idx);
 void lua_call (lua_State *L, int nargs, int nresults);
 int lua_pcall (lua_State *L, int nargs, int nresults, int msgh);
 
+/*
+** ===============================================================
+** some useful macros
+** ===============================================================
+*/
+
+#define lua_pop(L,n)		lua_settop(L, -(n)-1)
 
 #endif

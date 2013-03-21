@@ -3,6 +3,7 @@
 * Lua C API.
 */
 
+#include <string.h>
 #include <assert.h>
 #include <stddef.h>
 #include <stdbool.h>
@@ -38,15 +39,17 @@ static int stk_idx( lua_State* L, struct TValue* entry ){
 	return stk_base( L ) - entry;
 }
 
-// TODO: stack manipulation
+/*
+* Access acceptable indices ( i.e. can go past top ). 
+*/
 struct TValue* index2addr (lua_State *L, int idx) {
 	int top = lua_gettop( L );
 		
 	if( idx > 0 ){
-		luai_apicheck( L, idx <= top );
+		luai_apicheck( L, idx <= LUA_MINSTACK );
 		return stk_entry( L, idx );	
 	} else if ( idx > LUA_REGISTRYINDEX ){
-		luai_apicheck( L, idx != 0 && -idx <= top );
+		luai_apicheck( L, idx != 0 && -idx <= top + 1 );
 		return stk_entry( L, ( top + idx ) + 1 );
 	} else if ( idx == LUA_REGISTRYINDEX ) {
 		assert( false );	// access the registry 
@@ -73,6 +76,20 @@ struct TValue lua_safepop( lua_State *L ){
 int lua_gettop(lua_State *L){
 	return stk_idx( L, L->top );
 }	
+
+void lua_settop(lua_State *L, int idx){
+	if( idx > 0 ){
+		int top = lua_gettop( L );
+		while( ++top <= idx )
+			index2addr( L, top )->t = LUA_TNIL;
+ 		L->top = index2addr( L, idx );	
+	} else if ( idx == 0 ) {
+		L->top = stk_base( L );
+	} else {
+		L->top = index2addr( L, idx );
+	}	
+
+}
 
 /*
 ** push functions (C -> stack)
@@ -126,15 +143,38 @@ void lua_getglobal(lua_State *L, const char *var){
 }
 
 /*
-** 'load' and 'call' functions (load and run Lua code)
+** call Lua functions.
 */
 
 void lua_call (lua_State *L, int nargs, int nresults){
-	struct TValue* closure = index2addr( L, 1 );
+	struct TValue results[ nresults ];
+
+	const int base = lua_gettop( L ) - nargs;
+	struct TValue* closure = index2addr( L, base );
 
 	int n = L->jbs( nargs, &closure->v );
 
-	// TODO: copy the results 
+	// calculare src pointer, this code depends on xlogue heavily.
+	const int o = offsetof( struct TValue, v );
+	struct TValue* src = (struct TValue*)( (char*)closure->v.n - o  );
+
+	/*
+	* Remember jit stack grows backwards. Also the results
+	* are still on the stack so don't do any calls as they
+	* might clobber results. Until the reults are copied. 
+	*/
+	for( int i = 0; i < nresults; i++, src-- ){
+		if( i < n )
+			results[i] = *src;
+		else
+			results[i].t = LUA_TNIL;
+	}
+
+	// safe to call func now.
+	for( int i = 0; i < nresults; i++ )
+		*index2addr( L, base + i ) = results[i];
+
+	lua_settop( L, base + ( nresults - 1 ) );
 }
 
 int lua_pcall (lua_State *L, int nargs, int nresults, int msgh){
