@@ -112,3 +112,31 @@ void lua_setglobal(lua_State *L, const char *var){
 	table_set( (struct table*) L->genv.v.gc, key, lua_safepop( L ) );
 }
 
+/*
+** get functions (Lua -> stack)
+*/
+void lua_getglobal(lua_State *L, const char *var){
+	struct TValue key = { 
+		.t = LUA_TSTRING, 
+		.v.gc = ( struct gcheader*) var 
+	};
+	
+	struct TValue g = table_get( (struct table*) L->genv.v.gc, key );
+	lua_safepush( L, g );
+}
+
+/*
+** 'load' and 'call' functions (load and run Lua code)
+*/
+
+void lua_call (lua_State *L, int nargs, int nresults){
+	struct TValue* closure = index2addr( L, 1 );
+
+	int n = L->jbs( nargs, &closure->v );
+
+	// TODO: copy the results 
+}
+
+int lua_pcall (lua_State *L, int nargs, int nresults, int msgh){
+	return 0;
+}

@@ -74,6 +74,15 @@ struct machine_ops {
 	void (*ret)( struct emitter* me, struct machine* m );
 
 	/*
+	* Generic way to handle being called by C. To bootstrap the jitter.
+	* If an arch requires an operation ( e.g. stack update ) then this
+	* interface will need to be updated. For now these functions return
+	* the location of arguments and results.
+	*/
+	operand (*carg)( struct machine *m, int argidx );	
+	operand (*cret)( struct machine *m );		 
+
+	/*
 	* Calling C functions. Two ways:
 	*	- Static, used for calling internal functions e.g. gettable
 	*	- Dynamic, call embedded C functions from Lua vm.i

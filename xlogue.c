@@ -589,7 +589,41 @@ void jinit_vresult_postcall( struct JFunc* jf, struct machine_ops* mop, struct e
 	
 }
 
+/*
+* Bootstrap JIT code. The prototype for this function is:
+*	int bootstrap( int nr_args, struct Value* closure )
+* should return the number of results, and expects . 
+*/
+void jinit_bootstrap( struct JFunc* jf, struct machine_ops* mop 
+						, struct emitter* e
+						, struct machine* m ){
+	operand rargs[ RA_SIZE ];
+	prefer_nontemp_acquire_reg( mop, e, m, RA_SIZE, rargs );
 
+	if( m->is_ra )
+		push( mop, e, m, OP_TARGETREG( m->ra ) ); 
+
+	// move to expected args 
+	mop->move( e, m, rargs[ RA_EXIST ], mop->carg( m, 0 ) );
+	mop->move( e, m, rargs[ RA_SRC ], mop->carg( m, 1 ) );
+
+	// call prologue 
+	jfunc_call( mop, e, m, JF_PROLOGUE, 0, JFUNC_UNLIMITED_STACK, 2
+					, rargs[ RA_EXIST ], rargs[ RA_SRC ] );
+
+	// set the return src to closure ( which is now dst )
+	mop->move( e, m, OP_TARGETDADDR( rargs[ RA_DST ].reg, 0 )
+				, rargs[ RA_SRC ] );
+	mop->move( e, m, mop->cret( m ), rargs[ RA_EXIST ] );
+
+
+	prefer_nontemp_release_reg( mop, e, m, RA_SIZE );
+
+	if( m->is_ra )
+		pop( mop, e, m, OP_TARGETREG( m->ra ) ); 
+
+	mop->ret( e, m );
+}
 
 
 /*

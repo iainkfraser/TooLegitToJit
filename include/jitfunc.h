@@ -18,7 +18,9 @@ struct JFunc {
 	unsigned long 	data;			// used by the jfunction 
 };
 
-enum { JF_ARG_RES_CPY, JF_STORE_LOCALS, JF_LOAD_LOCALS, JF_EPILOGUE, JF_PROLOGUE, JF_VARRES_POSTCALL, JF_COUNT };
+enum { JF_ARG_RES_CPY, JF_STORE_LOCALS, JF_LOAD_LOCALS, JF_EPILOGUE
+	, JF_PROLOGUE, JF_VARRES_POSTCALL, JF_BOOTSTRAP, JF_COUNT 
+};
 
 static inline int jf_arch_idx( int idx ){ return JF_COUNT + idx; }
 

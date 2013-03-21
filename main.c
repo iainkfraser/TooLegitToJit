@@ -502,8 +502,6 @@ int main( int argc, char* argv[] ){
 	extern struct machine mips_mach;
 	extern struct machine_ops mips_ops;
 
-	lua_State ls;
-	lstate_preinit( &ls );
 
 	// force allow spill
 	mips_mach.allow_spill = true;
@@ -520,6 +518,8 @@ int main( int argc, char* argv[] ){
 	do_cfail( validate_header( f ), "unacceptable header" );
 	do_cfail( load_function( f, &main, &ca, &mips_mach, &mips_ops ), "unable to load func" );
 
+	lua_State ls;
+	lstate_preinit( &ls, (jit_bootstrap)jfunc_addr( e, JF_BOOTSTRAP ) );
 
 	if( !disassem ){
 		// init C funcs
@@ -529,7 +529,13 @@ int main( int argc, char* argv[] ){
 		assert( main.sizeupvalues == 1 );
 		struct closure* cmain = closure_create( &main, NULL, &ls.genv );
 		execute( cmain, jfunc_addr( e, JF_PROLOGUE ) );
-	
+
+#if 1		// test calling a Lua function
+		lua_getglobal( &ls, "lfn" );
+		lua_call( &ls, 0, 0 );			
+#endif	
+
+
 		// deref c closure do garbage collection
 
 	} else { 

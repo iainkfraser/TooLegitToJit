@@ -97,6 +97,16 @@ bool is_mips_temp( operand o ){
 	return ISO_REG( o ) && MIPSREG_ISTEMP( o.reg );
 }
 
+operand mips_carg( struct machine* m, int argidx ){
+	return argidx < 4 ?
+		OP_TARGETREG( _a0 + argidx ) :
+		OP_TARGETDADDR( m->sp, 16 + 4 * argidx );
+
+}
+
+operand mips_cret( struct machine* m ){
+	return OP_TARGETREG( _v0 );	
+}
 
 struct machine_ops mips_ops = {
 	.move = move,
@@ -120,6 +130,8 @@ struct machine_ops mips_ops = {
 	,.create_emitter = emitter32_create 
 	,.nr_jfuncs = mips_nr_jfuncs
 	,.jf_init = mips_jf_init
+	,.carg = mips_carg
+	,.cret = mips_cret
 };
 
 #undef ra 

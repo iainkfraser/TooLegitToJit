@@ -12,6 +12,8 @@
 #include "list.h"
 #include "lobject.h"
 
+typedef int (*jit_bootstrap)( int nr_args, union Value* closure );
+
 struct lua_State {
 	// could put garbage collection here
 
@@ -20,9 +22,11 @@ struct lua_State {
 	struct TValue gstack[ LUA_MINSTACK ];	// vstack communicate with C
 	struct TValue* stack;
 	struct TValue* top;			// top of the stack
+	jit_bootstrap jbs;
 };
 
 
-void lstate_preinit( lua_State* ls );
+
+void lstate_preinit( lua_State* ls, jit_bootstrap jbs );
 lua_State* current_state();	// the current execution context lua state
 #endif
