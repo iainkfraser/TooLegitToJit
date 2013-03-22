@@ -7,12 +7,15 @@
 #ifndef lopcodes_h
 #define lopcodes_h
 
+#include <limits.h>
+#include "luaconf.h"
+
 /* @ikf: not using the below include because bottom of file undefined */
 #if 0 
 #include "llimits.h"
 #else
 #define cast(t, exp)	((t)(exp))
-typedef uint32_t Instruction;
+typedef unsigned int Instruction;
 
 #define MAX_INT (INT_MAX-2)  /* maximum value of an int (-2 for safety) */
 
@@ -59,6 +62,9 @@ enum OpMode {iABC, iABx, iAsBx, iAx};  /* basic instruction format */
 #define POS_Bx		POS_C
 #define POS_Ax		POS_A
 
+#if LUAI_BITSINT < 32
+#error "WTF?"
+#endif
 
 /*
 ** limits for opcode arguments.

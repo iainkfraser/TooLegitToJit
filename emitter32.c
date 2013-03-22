@@ -36,6 +36,7 @@ struct emitter32 {
 	uint32_t*		jt;		// jump table
 	size_t 			size;		// size of machine code
 	size_t			bufsize;	// size of machine code buffer
+	unsigned int 		pc;		// the largest pc label set so far.
 	struct list_head	head;		// linked list of branch ops that need to be linked. 
 	struct list_head	local[NR_LOCAL_LABELS];	// local labels 
 };
@@ -87,6 +88,9 @@ static void cleanup( struct emitter* e ){
 }
 
 static void label_pc( struct emitter* e, unsigned int pc ){
+	if( pc > SELF->pc )
+		SELF->pc = pc;
+
 	SELF->jt[ pc ] = SELF->size / 4; 	
 }
 
@@ -140,6 +144,10 @@ static uintptr_t absc( struct emitter* e ){
 	return (uintptr_t)&SELF->mcode[ SELF->size / 4 ]; 
 }
 
+unsigned int pc(struct emitter* e ){
+	return SELF->pc;
+}
+
 static struct emitter_ops vtable = {
 	.link = &link,
 	.offset = &offset, 
@@ -149,7 +157,8 @@ static struct emitter_ops vtable = {
 	.branch_pc = &branch_pc,
 	.branch_local = &branch_local, 
 	.ec = &ec,
-	.absc = absc
+	.absc = &absc,
+	.pc = &pc
 };
 
 
@@ -166,6 +175,7 @@ void emitter32_create( struct emitter** e, size_t vmlines, e_realloc era ){
 	self->size = 0;
 	self->bufsize = 0;
 	self->jt = malloc( jtsz );
+	self->pc = 0;
 
 	assert( self->jt );		// TODO: error checking
 

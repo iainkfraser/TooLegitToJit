@@ -64,4 +64,31 @@ void emit_self( struct emitter** mce, struct machine_ops* mop
 					, loperand stable
 					, loperand key );
 
+/*
+* Branching 
+*/
+
+void emit_jmp( struct emitter** mce, struct machine_ops* mop
+					, struct frame *f
+					, loperand a
+					, int offset );
+
+void emit_eq( struct emitter** mce, struct machine_ops* mop
+					, struct frame *f
+					, loperand a
+					, loperand b
+					, int pred );
+
+void emit_lt( struct emitter** mce, struct machine_ops* mop
+					, struct frame *f
+					, loperand a
+					, loperand b
+					, int pred );
+
+void emit_le( struct emitter** mce, struct machine_ops* mop
+					, struct frame *f
+					, loperand a
+					, loperand b
+					, int pred );
+
 #endif 

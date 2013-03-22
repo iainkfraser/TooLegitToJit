@@ -199,7 +199,7 @@ int load_upvalues( FILE* f, struct proto* p ){
 
 
 int load_code( FILE* f, struct proto* p, struct code_alloc* ca, struct machine* m, struct machine_ops* mop ){
-	uint32_t ins;
+	Instruction ins;
 	int ret, seek, end;
 	struct emitter* mce;
 	struct frame fr = { .m = m, .nr_locals = p->maxstacksize, .nr_params = p->numparams };
@@ -232,9 +232,8 @@ int load_code( FILE* f, struct proto* p, struct code_alloc* ca, struct machine* 
 	
 	// jit the code
 	for( unsigned int i = 0; i < p->sizecode; i++){
-		fread( &ins, sizeof( uint32_t ), 1, f ); 
-
-		uint32_t A = GETARG_A( ins );
+		fread( &ins, sizeof( Instruction ), 1, f ); 
+		Instruction A = GETARG_A( ins );
 
 		// emit Lua VM pc
 		mce->ops->label_pc( mce, i );
@@ -347,6 +346,29 @@ int load_code( FILE* f, struct proto* p, struct code_alloc* ca, struct machine* 
 					, to_loperand( A )
 					, to_loperand( GETARG_B( ins ) )
 					, to_loperand( GETARG_C( ins ) ) );	
+				break;
+			case OP_JMP:
+				emit_jmp( &mce, mop, &fr
+					, to_loperand( A )
+					, GETARG_sBx( ins ) ); 
+				break;
+			case OP_EQ:
+				emit_eq( &mce, mop, &fr
+					, to_loperand( GETARG_B( ins ) )
+					, to_loperand( GETARG_C( ins ) )
+					, A );
+				break;
+			case OP_LT:
+				emit_lt( &mce, mop, &fr
+					, to_loperand( GETARG_B( ins ) )
+					, to_loperand( GETARG_C( ins ) )
+					, A );
+				break;
+			case OP_LE:
+				emit_le( &mce, mop, &fr
+					, to_loperand( GETARG_B( ins ) )
+					, to_loperand( GETARG_C( ins ) )
+					, A );
 				break;
 			default:
 				printf("%d\n", GET_OPCODE( ins ) );

@@ -27,6 +27,7 @@ struct emitter_ops {
 	void (*branch_pc)( struct emitter* me, int line );
 	void (*branch_local)( struct emitter* me, int local, bool next );
 
+	unsigned int (*pc)(struct emitter* e );
 	unsigned int (*ec)(struct emitter* e );		// get current emitter address 
 	uintptr_t (*absc)(struct emitter* e );		// get current absolute address
 };
