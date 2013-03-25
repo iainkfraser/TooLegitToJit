@@ -121,6 +121,19 @@ int load_constants( FILE* f, struct proto* p, struct emitter** mce, struct frame
 	load_member( p, nrconstants, f );
 	init_consts( fr, p->nrconstants );
 
+/*
+* Convert back to Lua type
+*/
+#if LUA_TNUMBER != 3
+#undef LUA_TNUMBER
+#define LUA_TNUMBER 3
+#endif
+
+#if LUA_TNIL != 0
+#undef LUA_TNIL
+#define LUA_TNIL 0
+#endif
+
 	for( int i = 0; i < p->nrconstants; i++ ){
 		fread( &t, sizeof(char), 1, f );	
 		switch( t ){
