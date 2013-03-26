@@ -24,13 +24,35 @@
 
 #define REF	( *( struct emitter**)mce ) 
 
-enum BOP { BOP_ADD, BOP_SUB, BOP_DIV, BOP_MUL, BOP_MOD, MOP_POW };
+enum BOP { BOP_ADD, BOP_SUB, BOP_DIV, BOP_MUL, BOP_MOD, BOP_POW };
 
 static lua_Number ljc_nonnumeric_bop( lua_Number st, lua_Number sv
 					, lua_Number tt, lua_Number tv
 					, int op, lua_Number* vt ) {
-	printf("coerecsion");
-	return 0;
+	if( st == LUA_TSTRING )
+		sscanf( (char*)sv, "%d", &sv );
+
+	if( tt == LUA_TSTRING )
+		sscanf( (char*)tv, "%d", &tv );
+
+	*vt = LUA_TNUMBER;
+	switch( op )
+	{
+	case BOP_ADD:
+		return sv + tv;
+	case BOP_SUB:
+		return sv - tv;
+	case BOP_DIV:
+		return sv / tv;
+	case BOP_MUL:
+		return sv * tv;
+	case BOP_MOD:
+		return sv % tv;
+	case BOP_POW:
+		return 0;
+	default:
+		assert( false );
+	}
 }
 
 typedef void (*arch_bop)( struct emitter*, struct machine* m
@@ -73,8 +95,9 @@ static void emit_bop( struct emitter* me, struct machine_ops *mop
 	address_of( mop, me, f->m, tag
 			, vreg_to_operand( f, d.index, true ).type );
 	mop->call_static_cfn( me, f, (uintptr_t)&ljc_nonnumeric_bop
-					, &od.value, 4, os.type, os.value 
-					, ot.type, ot.value, op, tag ); 
+					, &od.value, 6, os.type, os.value 
+					, ot.type, ot.value
+					, OP_TARGETIMMED( op ), tag ); 
 	vreg_type_fill( mop, me, f, d.index );
 	mop->b( me, f->m, LBL_NEXT( 1 ) );	
 
