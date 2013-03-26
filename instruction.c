@@ -39,46 +39,6 @@ void emit_move( struct emitter** mce, struct machine_ops* mop, struct frame* f, 
 
 
 /*
-* Binary operators 
-*/
-
-
-typedef void (*arch_bop)( struct emitter*, struct machine* m, operand, operand, operand );
-
-static void emit_bop( struct emitter* me, struct frame* f, loperand d, loperand s, loperand t, arch_bop ab ){
-	vreg_operand od = loperand_to_operand( f, d ),
-			os = loperand_to_operand( f, s ),
-			ot = loperand_to_operand( f, t );
-
-	// TODO: verify there all numbers 
-
-	ab( me, f->m, od.value, os.value, ot.value );
-}
-
-void emit_add( struct emitter** mce, struct machine_ops* mop, struct frame* f, loperand d, loperand s, loperand t ){
-	emit_bop( REF, f, d, s, t, mop->add );
-}
-
-void emit_sub( struct emitter** mce, struct machine_ops* mop, struct frame* f, loperand d, loperand s, loperand t ){
-	emit_bop( REF, f, d, s, t, mop->sub );
-}
-
-void emit_mul( struct emitter** mce, struct machine_ops* mop, struct frame* f, loperand d, loperand s, loperand t ){
-	emit_bop( REF, f, d, s, t, mop->mul );
-}
-
-void emit_div( struct emitter** mce, struct machine_ops* mop, struct frame* f, loperand d, loperand s, loperand t ){
-	emit_bop( REF, f, d, s, t, mop->sdiv );
-}
-
-void emit_mod( struct emitter** mce, struct machine_ops* mop, struct frame* f, loperand d, loperand s, loperand t ){
-	emit_bop( REF, f, d, s, t, mop->smod );
-	
-	// TODO: convert to floored mod 
-	// if ((d > 0 && t < 0) || (d < 0 && t > 0)) d = d+t;
-}
-
-/*
 * For loop 
 */
 

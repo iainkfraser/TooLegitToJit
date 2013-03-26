@@ -16,6 +16,7 @@
 #include "arch/mips/opcodes.h"
 #include "arch/mips/arithmetic.h"
 
+
 #define VALIDATE_OPERANDS( operator )					\
 	do{									\
 		assert( s.tag != OT_IMMED );					\
@@ -25,6 +26,8 @@
 			}							\
 			return;							\
 		}							\
+		sub_zero_reg( &s );					\
+		sub_zero_reg( &t );					\
 	}while( 0 )
 
 int mips_branch( struct emitter* me, label l ){

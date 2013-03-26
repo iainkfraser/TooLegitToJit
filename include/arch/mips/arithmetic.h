@@ -14,5 +14,6 @@ void mips_sdiv( struct emitter* me, struct machine* m, operand d, operand s, ope
 void mips_udiv( struct emitter* me, struct machine* m, operand d, operand s, operand t );
 void mips_smod( struct emitter* me, struct machine* m, operand d, operand s, operand t );
 void mips_umod( struct emitter* me, struct machine* m, operand d, operand s, operand t );
+void mips_or( struct emitter* me, struct machine* m, operand d, operand s, operand t );
 
 #endif

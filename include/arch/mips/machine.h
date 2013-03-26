@@ -22,4 +22,12 @@ bool is_add_immed( operand o );
 bool is_sub_immed( operand o );
 bool is_mips_temp( operand o );
 
+
+
+// subsitute immediate zero with zero register.
+static inline void sub_zero_reg( operand* x ){
+	if( x->tag == OT_IMMED && !x->k )
+		*x = OP_TARGETREG( 0 );
+}
+
 #endif

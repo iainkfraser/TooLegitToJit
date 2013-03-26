@@ -53,6 +53,7 @@ struct machine_ops {
 	void (*smod)( struct emitter* me, struct machine* m, operand d, operand s, operand t );
 	void (*umod)( struct emitter* me, struct machine* m, operand d, operand s, operand t );
 	void (*pow)( struct emitter* me, struct machine* m, operand d, operand s, operand t );
+	void (*bor)( struct emitter* me, struct machine* m, operand d, operand s, operand t );
 
 	/*
 	* Compulsory branching instructions. All branches expect temp registers to be

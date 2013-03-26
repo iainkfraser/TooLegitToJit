@@ -22,6 +22,8 @@
 			move( me, m, d, OP_TARGETIMMED( s.k operator t.k ) );	\
 			return;							\
 		}							\
+		sub_zero_reg( &s );					\
+		sub_zero_reg( &t );					\
 	}while( 0 )
 
 // can the operand be used in addi instruction?
@@ -46,7 +48,9 @@ struct aq_reg {
 };
 
 
-static struct aq_reg acquire_reg( struct emitter* e, struct machine* m, operand* d, operand* s, operand* t, bool allowimmed ){
+static struct aq_reg acquire_reg( struct emitter* e, struct machine* m
+					, operand* d, operand* s, operand* t
+					, bool allowimmed ){
 	assert( d->tag != OT_IMMED && s->tag != OT_IMMED );
 
 	struct aq_reg a = { .d = *d, .n = 0 };
@@ -92,8 +96,11 @@ static void release_reg( struct emitter* e, struct machine* m, operand d, struct
 	release_tempn( _MOP, e, m, a.n );
 }
 
-static void do_nonimm_bop( struct emitter* me, struct machine* m, operand d, operand s, operand t, int op, int special,
-		bool isdiv, bool islow ){
+static void do_nonimm_bop( struct emitter* me, struct machine* m, operand d
+						, operand s, operand t, int op
+						, int special, bool isdiv
+						, bool islow ){
+
 	struct aq_reg a = acquire_reg( me, m, &d, &s, &t, false );
 	assert( d.tag == OT_REG && s.tag == OT_REG && t.tag == OT_REG );
 
@@ -163,6 +170,13 @@ void mips_mul( struct emitter* me, struct machine* m, operand d, operand s, oper
 	} else {
 		do_nonimm_bop( me, m, d, s, t, MOP_SPECIAL2_MUL, MOP_SPECIAL2, false, false );
 	}
+}
+
+void mips_or( struct emitter* me, struct machine* m, operand d, operand s, operand t ){
+	VALIDATE_OPERANDS( | );
+
+	// this approach doesn't take advantage of ori with single immediate value.
+	do_nonimm_bop( me, m, d, s, t, MOP_SPECIAL_OR, MOP_SPECIAL, false ,false );
 }
 
 static void mips_div( struct emitter* me, struct machine* m, operand d, operand s, operand t, bool issigned ){

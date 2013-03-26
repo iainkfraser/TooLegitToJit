@@ -118,6 +118,7 @@ struct machine_ops mips_ops = {
 	.umod = mips_umod,
 	.smod = mips_smod,
 	.pow = mips_pow,
+	.bor = mips_or,
 	.b = mips_b,
 	.beq = mips_beq,
 	.blt = mips_blt,
