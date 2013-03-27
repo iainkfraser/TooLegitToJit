@@ -10,5 +10,6 @@
 #include "lobject.h"
 
 int lstrcmp( struct TValue* s, struct TValue* t );
+bool lstrtonum( struct TValue* s, lua_Number* r );
 
 #endif

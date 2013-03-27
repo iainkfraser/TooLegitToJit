@@ -21,38 +21,64 @@
 #include "jitfunc.h"
 #include "frame.h"
 #include "synthetic.h"
+#include "macros.h"
+#include "lmetaevent.h"
+#include "lerror.h"
+#include "lstring.h"
 
 #define REF	( *( struct emitter**)mce ) 
 
-enum BOP { BOP_ADD, BOP_SUB, BOP_DIV, BOP_MUL, BOP_MOD, BOP_POW };
+enum BOP { BOP_ADD, BOP_SUB, BOP_MUL, BOP_DIV, BOP_MOD, BOP_POW };
+
+
+static bool tonumber( struct TValue* v, lua_Number* d ){
+	if( tag( v ) == LUA_TNUMBER )
+		*d = tvtonum( v );
+	else if( tag( v ) == LUA_TSTRING )
+		return lstrtonum( v, d );
+	else
+		return false;
+
+	return true;
+}
 
 static lua_Number ljc_nonnumeric_bop( lua_Number st, lua_Number sv
 					, lua_Number tt, lua_Number tv
 					, int op, lua_Number* vt ) {
-	if( st == LUA_TSTRING )
-		sscanf( (char*)sv, "%d", &sv );
 
-	if( tt == LUA_TSTRING )
-		sscanf( (char*)tv, "%d", &tv );
+	struct TValue s = { .t = st, .v = (union Value)sv };
+	struct TValue t = { .t = tt, .v = (union Value)tv };
+	struct TValue d;
+	lua_Number a,b;
 
-	*vt = LUA_TNUMBER;
-	switch( op )
-	{
-	case BOP_ADD:
-		return sv + tv;
-	case BOP_SUB:
-		return sv - tv;
-	case BOP_DIV:
-		return sv / tv;
-	case BOP_MUL:
-		return sv * tv;
-	case BOP_MOD:
-		return sv % tv;
-	case BOP_POW:
-		return 0;
-	default:
-		assert( false );
+	if( tonumber( &s, &a ) && tonumber( &t, &b ) ){
+		*vt = LUA_TNUMBER;
+		switch( op )
+		{
+		case BOP_ADD:
+			return a + b;
+		case BOP_SUB:
+			return a - b;
+		case BOP_DIV:
+			return a / b;
+		case BOP_MUL:
+			return a * b;
+		case BOP_MOD:	// TODO: should be floor mod
+			return a % b;
+		case BOP_POW:	// TODO: implement 
+			return 0;
+		}
+		
+		unreachable();
 	}
+	
+	TMS tms = op - BOP_ADD;
+	if( call_binmevent( &s, &t, &d, op ) ){
+		*vt = tag( &d );
+		return tvtonum( &d ); 	
+	}
+
+	lcurrent_error( LE_ARITH );
 }
 
 typedef void (*arch_bop)( struct emitter*, struct machine* m
