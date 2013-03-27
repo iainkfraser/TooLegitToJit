@@ -80,22 +80,33 @@ void mips_b( struct emitter* me, struct machine* m, label l ){
 	EMIT( MI_NOP() );
 }
 
-void mips_beq( struct emitter* me, struct machine* m, operand s, operand t, label l ){
-	VALIDATE_OPERANDS( == );
+#define EMITEQ( p, s, t, l )				\
+	if( p )						\
+		EMIT( MI_BEQ( s, t, l ) );		\
+	else						\
+		EMIT( MI_BNE( s, t, l ) );
+
+
+static void do_equv( struct emitter* me, struct machine* m, operand s
+						, operand t, label l,
+						bool p ){
 	bool tried = false;
 rematch: 
 	/* try pattern matching approach to instruction selection */
 	if( ISO_REG( s ) && ISO_REG( t ) ){
-		EMIT( MI_BEQ( s.reg, t.reg, mips_branch( me, l ) ) );
+//		EMIT( MI_BEQ( s.reg, t.reg, mips_branch( me, l ) ) );
+		EMITEQ( p, s.reg, t.reg, mips_branch( me, l ) );
 		EMIT( MI_NOP( ) );
 	} else if ( ISO_REG( s ) && ISO_DADDR( t ) ){
 		operand temp = OP_TARGETREG( acquire_temp( _MOP, me, m ) );
 		move( me, m, temp, t ); 
-		EMIT( MI_BEQ( s.reg, temp.reg, mips_branch( me, l ) ) );
+//		EMIT( MI_BEQ( s.reg, temp.reg, mips_branch( me, l ) ) );
+		EMITEQ( p, s.reg, temp.reg, mips_branch( me, l ) );
 		RELEASE_OR_NOP( me, m );	
 	} else if ( ISO_REG( s ) && IS_INVERTIBLE_IMMED( t ) ){
 		EMIT( MI_ADDIU( s.reg, s.reg, -t.k ) );
-		EMIT( MI_BEQ( s.reg, _zero, mips_branch( me, l ) ) );
+//		EMIT( MI_BEQ( s.reg, _zero, mips_branch( me, l ) ) );
+		EMITEQ( p, s.reg, _zero, mips_branch( me, l ) );
 		EMIT( MI_ADDIU( s.reg, s.reg, t.k ) );
 	} else if ( ISO_DADDR( s ) && ISO_DADDR( t ) ){
 		operand t1 = OP_TARGETREG( acquire_temp( _MOP, me, m ) );
@@ -104,13 +115,15 @@ rematch:
 		move( me, m, t2, t ); 
 		EMIT( MI_SUBU( t1.reg, t1.reg, t2.reg ) );
 		release_temp( _MOP, me, m );
-		EMIT( MI_BEQ( t1.reg, _zero, mips_branch( me, l ) ) );
+//		EMIT( MI_BEQ( t1.reg, _zero, mips_branch( me, l ) ) );
+		EMITEQ( p, t1.reg, _zero, mips_branch( me, l ) );
 		RELEASE_OR_NOP( me, m );	
 	} else if ( ISO_DADDR( s ) && IS_INVERTIBLE_IMMED( t ) ){
 		operand temp = OP_TARGETREG( acquire_temp( _MOP, me, m ) );
 		move( me, m, temp, s ); 
 		EMIT( MI_ADDIU( temp.reg, temp.reg, -t.k ) );
-		EMIT( MI_BEQ( temp.reg, _zero, mips_branch( me, l ) ) );
+//		EMIT( MI_BEQ( temp.reg, _zero, mips_branch( me, l ) ) );
+		EMITEQ( p, temp.reg, _zero, mips_branch( me, l ) );
 		RELEASE_OR_NOP( me, m );
 	} else {
 		assert( !tried );
@@ -118,6 +131,16 @@ rematch:
 		swap( s, t );
 		goto rematch;
 	}
+}
+
+void mips_beq( struct emitter* me, struct machine* m, operand s, operand t, label l ){
+	VALIDATE_OPERANDS( == );
+	do_equv( me, m, s, t, l, true );
+}
+
+void mips_bne( struct emitter* me, struct machine* m, operand s, operand t, label l ){
+	VALIDATE_OPERANDS( != );
+	do_equv( me, m, s, t, l, false );
 }
 
 static int ineq_load_temp( operand* op, struct emitter* e, struct machine* m ){

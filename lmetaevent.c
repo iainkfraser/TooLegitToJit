@@ -13,8 +13,8 @@ struct TValue* getmt( struct TValue* t ){
 }
 
 
-bool do_call_binmevent( struct TValue* mt, struct TValue* s, struct TValue* t,
-					struct TValue* d, int event ){
+bool mt_call_binmevent( struct TValue* mt, struct TValue* s, struct TValue* t
+					, struct TValue* d, int event ){
 	;
 }
 
@@ -27,5 +27,5 @@ bool call_binmevent( struct TValue* s, struct TValue* t, struct TValue* d
 	if( !mt )
 		return false;
 	
-	return do_call_binmevent( mt, s, t, d, event );
+	return mt_call_binmevent( mt, s, t, d, event );
 }

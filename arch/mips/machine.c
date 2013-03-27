@@ -121,6 +121,7 @@ struct machine_ops mips_ops = {
 	.bor = mips_or,
 	.b = mips_b,
 	.beq = mips_beq,
+	.bne = mips_bne,
 	.blt = mips_blt,
 	.bgt = mips_bgt,
 	.ble = mips_ble,

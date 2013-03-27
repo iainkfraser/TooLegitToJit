@@ -61,6 +61,7 @@ struct machine_ops {
 	*/
 	void (*b)( struct emitter* me, struct machine* m, label l );
 	void (*beq)( struct emitter* me, struct machine* m, operand d, operand s, label l );
+	void (*bne)( struct emitter* me, struct machine* m, operand d, operand s, label l );
 	void (*blt)( struct emitter* me, struct machine* m, operand d, operand s, label l );
 	void (*bgt)( struct emitter* me, struct machine* m, operand d, operand s, label l );
 	void (*ble)( struct emitter* me, struct machine* m, operand d, operand s, label l );

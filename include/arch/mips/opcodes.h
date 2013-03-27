@@ -129,6 +129,7 @@
 #define MI_B( off )		GEN_MIPS_OPCODE_2REG( MOP_BEQ, 0, 0, off )
 #define MI_BAL( off )		GEN_MIPS_OPCODE_2REG( MOP_BGTZ, 0, MOP_BGTZL, off ) 
 #define MI_BEQ( rs, rt, off )	GEN_MIPS_OPCODE_2REG( MOP_BEQ, rs, rt, off )
+#define MI_BNE( rs, rt, off )	GEN_MIPS_OPCODE_2REG( MOP_BNE, rs, rt, off )
 #define MI_BLTZ( rs, off )	GEN_MIPS_OPCODE_2REG( MOP_BLTZ, rs, 0, off )
 #define MI_BGEZ( rs, off )	GEN_MIPS_OPCODE_2REG( 1, rs, MOP_BGEZ, off ) 
 #define MI_BGTZ( rs, off )	GEN_MIPS_OPCODE_2REG( MOP_BGTZ, rs, 0, off )

@@ -159,7 +159,10 @@ typedef struct table {
 
 #define tvtostr( tv )	( (char*)(tv)->v.gc )
 #define tvtobool( tv )	( (tv)->v.b )
-
+#define tvtonum( tv )	( (tv)->v.n )
+#define tvtolud( tv )	( (tv)->v.p )
+#define tvtolcf( tv )	( (tv)->v.f )
+#define tvtogch( tv )	( (tv)->v.gc )
 
 #define tvisfalse( tv )			\
 	( tag( tv ) == LUA_TNIL || 	\

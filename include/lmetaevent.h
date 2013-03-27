@@ -31,6 +31,9 @@ typedef enum {
 } TMS;
 
 
+struct TValue* getmt( struct TValue* t );
+bool mt_call_binmevent( struct TValue* mt, struct TValue* s, struct TValue* t
+					, struct TValue* d, int event );
 bool call_binmevent( struct TValue* s, struct TValue* t, struct TValue* d
 							, int event );
 

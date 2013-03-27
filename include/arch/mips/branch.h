@@ -9,6 +9,7 @@
 
 void mips_b( struct emitter* me, struct machine* m, label l );
 void mips_beq( struct emitter* me, struct machine* m, operand d, operand s, label l );
+void mips_bne( struct emitter* me, struct machine* m, operand s, operand t, label l );
 void mips_blt( struct emitter* me, struct machine* m, operand d, operand s, label l );
 void mips_bgt( struct emitter* me, struct machine* m, operand d, operand s, label l );
 void mips_ble( struct emitter* me, struct machine* m, operand d, operand s, label l );

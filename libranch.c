@@ -61,8 +61,41 @@ static lua_Number do_leq( struct TValue* s, struct TValue* t ){
 }
 
 static lua_Number do_eq( struct TValue* s, struct TValue* t ){
+	struct TValue *mt,d;
+
+	if( tag( s ) != tag( t ) )
+		return false;
+
 	if( tag( s ) == LUA_TSTRING && tag( t ) == LUA_TSTRING )
-		return lstrcmp( s, t ) == 0;			
+		return lstrcmp( s, t ) == 0;
+
+	switch( tag( s ) ){
+		case LUA_TNIL:
+			return true;
+		case LUA_TNUMBER:
+			return tvtonum( s ) == tvtonum( t );
+		case LUA_TBOOLEAN:
+			return tvtobool( s ) == tvtobool( t );
+		case LUA_TLIGHTUSERDATA:
+			return tvtolud( s ) == tvtolud( t );
+		case LUA_TLCF:
+			return tvtolcf( s ) == tvtolcf( t );
+		case LUA_TUSERDATA:
+		case LUA_TTABLE:
+			if( tvtogch( s ) == tvtogch( t ) )
+				return true;
+
+			if( ( mt = getmt( s ) ) != getmt( t ) )
+				return false;	
+			break;
+		default:
+			return tvtogch( s ) == tvtogch( t ); 
+	}
+
+	if( mt && mt_call_binmevent( mt, s, t, &d, TM_EQ ) )
+		return tvisfalse( &d );
+	
+	return false;
 }
 
 static lua_Number ljc_relational( lua_Number st, lua_Number sv
@@ -71,7 +104,7 @@ static lua_Number ljc_relational( lua_Number st, lua_Number sv
 	assert( !( st == LUA_TNUMBER && tt == LUA_TNUMBER ) );
 	
 	struct TValue s = { .t = st, .v = (union Value)sv };
-	struct TValue t = { .t = tt, .v = (union Value)st };
+	struct TValue t = { .t = tt, .v = (union Value)tv };
 	
 	switch( op ){
 		case REL_LT:
@@ -152,17 +185,10 @@ void emit_eq( struct emitter** mce, struct machine_ops* mop
 					, loperand a
 					, loperand b
 					, int pred ) {
-	vreg_operand va = loperand_to_operand( f, a );
-	vreg_operand vb = loperand_to_operand( f, b );
- 
-#if 0	// TODO: compare type && value
-	// TODO: verify there both numbers
-	unsigned int pc = REF->ops->pc( REF ) + 2;
-	if( pred )
-		mop->ble( REF, f->m, va.value, vb.value, LBL_PC( pc ) ); 
+	if( !pred )
+		emit_relational( REF, mop, f, a, b, mop->beq, REL_EQ, true  );
 	else
-		mop->bge( REF, f->m, va.value, vb.value, LBL_PC( pc ) ); 
-#endif
+		emit_relational( REF, mop, f, a, b, mop->bne, REL_EQ, false );
 }
 
 void emit_lt( struct emitter** mce, struct machine_ops* mop
