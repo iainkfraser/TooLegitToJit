@@ -6,6 +6,8 @@
 #ifndef _LUACONF_H_
 #define _LUACONF_H_
 
+#include <stddef.h>
+#include <stdint.h>
 #include <limits.h>
 
 /*

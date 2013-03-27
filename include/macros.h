@@ -40,5 +40,7 @@
 #define gl_static_assert(e)	enum { ASSERT_CONCAT(assert_line_, __LINE__) = 1/(!!(e)) } 
 
 
+#define unreachable()	( assert( false ) )
+
 #endif
 

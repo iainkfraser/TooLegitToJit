@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <stdlib.h>
+#include <string.h>
 #include "arch/mips/regdef.h"
 #include "bit_manip.h"
 #include "instruction.h"
@@ -21,17 +22,67 @@
 #include "jitfunc.h"
 #include "frame.h"
 #include "synthetic.h"
+#include "lstring.h"
+#include "lmetaevent.h"
+#include "lerror.h"
+#include "macros.h"
 
 #define REF	( *( struct emitter**)mce )
 
-enum REL { REL_ADD, BOP_SUB, BOP_DIV, BOP_MUL, BOP_MOD, BOP_POW };
+enum REL { REL_LT, REL_LEQ, REL_EQ };
+
+
+static lua_Number do_lt( struct TValue* s, struct TValue* t ){
+	struct TValue d;
+
+	if( tag( s ) == LUA_TSTRING && tag( t ) == LUA_TSTRING )
+		return lstrcmp( s, t ) < 0;			
+	else if( call_binmevent( s, t, &d, TM_LT ) )
+		return !tvisfalse( &d );
+	else
+		lcurrent_error( LE_ORDER );
+
+	unreachable();
+}
+ 
+static lua_Number do_leq( struct TValue* s, struct TValue* t ){
+	struct TValue d;
+
+	if( tag( s ) == LUA_TSTRING && tag( t ) == LUA_TSTRING )
+		return lstrcmp( s, t ) <= 0;			
+	else if( call_binmevent( s, t, &d, TM_LE ) )
+		return !tvisfalse( &d );
+	else if( call_binmevent( t, s, &d, TM_LT ) )
+		return tvisfalse( &d );
+	else
+		lcurrent_error( LE_ORDER );
+
+	unreachable();
+}
+
+static lua_Number do_eq( struct TValue* s, struct TValue* t ){
+	if( tag( s ) == LUA_TSTRING && tag( t ) == LUA_TSTRING )
+		return lstrcmp( s, t ) == 0;			
+}
 
 static lua_Number ljc_relational( lua_Number st, lua_Number sv
 					, lua_Number tt, lua_Number tv
 					, int op ) {
-	// TODO: error function
-	printf("relational\n");	
-	return true;
+	assert( !( st == LUA_TNUMBER && tt == LUA_TNUMBER ) );
+	
+	struct TValue s = { .t = st, .v = (union Value)sv };
+	struct TValue t = { .t = tt, .v = (union Value)st };
+	
+	switch( op ){
+		case REL_LT:
+			return do_lt( &s, &t ); 
+		case REL_LEQ:
+			return do_leq( &s, &t );
+		case REL_EQ:
+			return do_eq( &s, &t );
+		default:
+			assert( false );	
+	}
 }
 
 
@@ -41,7 +92,8 @@ typedef void (*arch_rel)( struct emitter*, struct machine*
 static void emit_relational( struct emitter *me, struct machine_ops *mop
 					, struct frame* f 
 					, loperand s, loperand t
-					, arch_rel ar, int op ){
+					, arch_rel ar, int op
+					, bool expect ){
 
 	vreg_operand os = loperand_to_operand( f, s ),
 			ot = loperand_to_operand( f, t );
@@ -59,7 +111,7 @@ static void emit_relational( struct emitter *me, struct machine_ops *mop
 					, &tag, 5, os.type, os.value 
 					, ot.type, ot.value
 					, OP_TARGETIMMED( op ) ); 
-	mop->beq( me, f->m, tag, OP_TARGETIMMED( true ), l );
+	mop->beq( me, f->m, tag, OP_TARGETIMMED( expect ), l );
 	mop->b( me, f->m, LBL_NEXT( 1 ) );	
 
 	// do primitive relational  
@@ -118,25 +170,10 @@ void emit_lt( struct emitter** mce, struct machine_ops* mop
 					, loperand a
 					, loperand b
 					, int pred ) {
-
 	if( !pred )
-		emit_relational( REF, mop, f, a, b, mop->blt, 0 );
+		emit_relational( REF, mop, f, a, b, mop->blt, REL_LT, true  );
 	else
-		emit_relational( REF, mop, f, a, b, mop->bgt, 0 );
-	return;
-
-	vreg_operand va = loperand_to_operand( f, a );
-	vreg_operand vb = loperand_to_operand( f, b );
- 
-	/*
-	* TODO: if number do this, if string do lex, if table try meta,
-	* otherwise fail.
-	*/
-	unsigned int pc = REF->ops->pc( REF ) + 2;
-	if( !pred )
-		mop->blt( REF, f->m, va.value, vb.value, LBL_PC( pc ) ); 
-	else
-		mop->bgt( REF, f->m, va.value, vb.value, LBL_PC( pc ) ); 
+		emit_relational( REF, mop, f, a, b, mop->bgt, REL_LT, false );
 }	
 
 void emit_le( struct emitter** mce, struct machine_ops* mop
@@ -145,23 +182,8 @@ void emit_le( struct emitter** mce, struct machine_ops* mop
 					, loperand b
 					, int pred ) {
 	if( !pred )
-		emit_relational( REF, mop, f, a, b, mop->ble, 0 );
+		emit_relational( REF, mop, f, a, b, mop->ble, REL_LEQ, true );
 	else
-		emit_relational( REF, mop, f, a, b, mop->bge, 0 );
-	
-#if 0
-	vreg_operand va = loperand_to_operand( f, a );
-	vreg_operand vb = loperand_to_operand( f, b );
- 
-	/*
-	* TODO: if number do this, if string do lex, if table try meta,
-	* otherwise fail.
-	*/
-	unsigned int pc = REF->ops->pc( REF ) + 2;
-	if( !pred )
-		mop->ble( REF, f->m, va.value, vb.value, LBL_PC( pc ) ); 
-	else
-		mop->bge( REF, f->m, va.value, vb.value, LBL_PC( pc ) ); 
-#endif
+		emit_relational( REF, mop, f, a, b, mop->bge, REL_LEQ, false );
 }
  

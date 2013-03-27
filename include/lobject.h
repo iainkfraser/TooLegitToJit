@@ -6,9 +6,9 @@
 #ifndef _LOBJECT_H_
 #define _LOBJECT_H_
 
-#include "lapi.h"
 #include <stdint.h>
 #include <stdbool.h>
+#include "lapi.h"
 #include "list.h"
 #include "macros.h"
 
@@ -148,5 +148,22 @@ typedef struct table {
 	struct dictionary *d;
 	struct TValue array[];
 } table_t; 
+
+
+/*
+* Access macros 
+*/
+
+
+#define vtostr( v )	( (char*)(v)->gc )
+
+#define tvtostr( tv )	( (char*)(tv)->v.gc )
+#define tvtobool( tv )	( (tv)->v.b )
+
+
+#define tvisfalse( tv )			\
+	( tag( tv ) == LUA_TNIL || 	\
+		( tag(tv) == LUA_TBOOLEAN && tvtobool( tv ) == false ) )
+
 
 #endif
