@@ -12,10 +12,19 @@ struct TValue* getmt( struct TValue* t ){
 	return NULL;
 }
 
+struct TValue* gettm( struct TValue* t, const TMS e ){
+	struct TValue* mt = getmt( t );
+	return NULL;
+}
+
+bool mt_call_bintm( struct TValue* tm, struct TValue* s, struct TValue* t
+						, struct TValue* d ){
+	return false;
+} 
 
 bool mt_call_binmevent( struct TValue* mt, struct TValue* s, struct TValue* t
 					, struct TValue* d, int event ){
-	;
+	return false;
 }
 
 bool call_binmevent( struct TValue* s, struct TValue* t, struct TValue* d

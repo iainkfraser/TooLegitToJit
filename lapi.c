@@ -7,6 +7,7 @@
 #include <assert.h>
 #include <stddef.h>
 #include <stdbool.h>
+#include <stdarg.h>
 #include "lapi.h"
 #include "lobject.h"
 #include "lstate.h"
@@ -180,3 +181,31 @@ void lua_call (lua_State *L, int nargs, int nresults){
 int lua_pcall (lua_State *L, int nargs, int nresults, int msgh){
 	return 0;
 }
+
+
+/*
+* Function call wrapper. Takes args and results as struct TValue*. The
+* args are in forward order and the results are in reverse order. 
+*/
+void lua_call_wrap( lua_State* L, struct TValue* f, int nargs, int nres, ... ){
+	assert( tag_gentype( f ) == LUA_TFUNCTION );
+
+
+	lua_safepush( L, *f );
+
+	struct TValue* tv[ nargs + nres ];
+	va_list ap;
+
+	va_start( ap, nres );
+	
+	for( int i = 0; i < nargs; i++ )
+		lua_safepush( L, *va_arg( ap, struct TValue* ) );
+	
+	lua_call( L, nargs, nres );
+
+	for( int i = 0; i < nres; i++ )
+		*va_arg( ap, struct TValue* ) = lua_safepop( L );
+
+
+}
+

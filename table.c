@@ -71,24 +71,4 @@ struct TValue table_get( struct table* t, struct TValue idx ){
 	return dictionary_search( t->d, idx );
 }
 
-/*
-* Lua jit callee functions ( args and return must be lua_Number/LUA_PTR ).
-*/
-
-LUA_PTR ljc_tableget( LUA_PTR t, lua_Number idxt, lua_Number idxv
-							, LUA_PTR type ){
-	Tag* tag = (Tag*)type;
-	struct TValue idx = { .t = idxt, .v.n = idxv };	
-	struct TValue v = table_get( (struct table*)t, idx );
-	*tag = v.t;
-	return v.v.n;
-}
-
-void ljc_tableset( LUA_PTR t, lua_Number idxt, lua_Number idxv
-							, lua_Number valt
-							, lua_Number valv ){
-	struct TValue idx = { .t = idxt, .v.n = idxv };	
-	struct TValue v = { .t = valt, .v.n = valv };
-	table_set( ( struct table*)t, idx, v );
-}
 

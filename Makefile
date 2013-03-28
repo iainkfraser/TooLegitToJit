@@ -4,8 +4,8 @@ CFLAGS := -I include -std=gnu99 -g3 -MD -MP -Werror -D_ELFDUMP_
 # arch independent 
 OBJECTS := elf.o jitfunc.o temporaries.o emitter32.o frame.o instruction.o 
 OBJECTS += synthetic.o main.o table.o func.o operand.o stack.o xlogue.o
-OBJECTS += mmap_alloc.o lstate.o liarith.o libranch.o lstring.o lerror.o
-OBJECTS += listdict.o lapi.o lmetaevent.o
+OBJECTS += mmap_alloc.o lstate.o liarith.o libranch.o litabup.o
+OBJECTS += listdict.o lapi.o lmetaevent.o lstring.o lerror.o
 
 # arch dependent
 OBJECTS += arch/mips/machine.o arch/mips/arithmetic.o arch/mips/branch.o arch/mips/call.o

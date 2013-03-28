@@ -45,6 +45,7 @@ struct TValue lua_safepop( lua_State *L );
 void lua_safepush( lua_State *L, struct TValue v );
 struct TValue* index2addr (lua_State *L, int idx);
 void initstack( lua_State *L, struct TValue* s, size_t sz );
+void lua_call_wrap( lua_State* L, struct TValue* f, int nargs, int nres, ... );
 
 /*
 ** basic stack manipulation
